@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spelling Bee Practice</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --good: #15803d;
+      --bad: #b91c1c;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button, select, input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: transform 0.06s ease, opacity 0.2s ease, background 0.2s ease;
+    }
+
+    button:hover { opacity: 0.96; }
+    button:active { transform: translateY(1px); }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .secondary {
+      background: #eef2ff;
+      color: #312e81;
+    }
+
+    .ghost {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 8px;
+      font-weight: 700;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 14px;
+      padding: 13px 14px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+    }
+
+    .promptBox {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 18px;
+      padding: 18px;
+      min-height: 170px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .result {
+      margin-top: 16px;
+      padding: 22px 20px;
+      border-radius: 18px;
+      font-weight: 900;
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1.15;
+      text-align: center;
+      display: none;
+      letter-spacing: -0.02em;
+    }
+
+    .resultSub {
+      display: block;
+      margin-top: 10px;
+      font-size: clamp(15px, 2.5vw, 19px);
+      font-weight: 700;
+      letter-spacing: normal;
+    }
+
+    .good {
+      background: #dcfce7;
+      color: var(--good);
+      border: 1px solid #bbf7d0;
+    }
+
+    .bad {
+      background: #fee2e2;
+      color: var(--bad);
+      border: 1px solid #fecaca;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fafafa;
+    }
+
+    .stat .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .stat .v {
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .history {
+      max-height: 420px;
+      overflow: auto;
+      border-top: 1px solid var(--border);
+      margin-top: 14px;
+      padding-top: 10px;
+    }
+
+    .historyItem {
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+      line-height: 1.55;
+    }
+
+    .muted { color: var(--muted); }
+    .tiny { font-size: 12px; }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      .wrap { padding: 16px; }
+      .hero, .card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="pill">Version 8</div>
+      <h1>Spelling Bee Practice</h1>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2 style="margin-top:0;">연습 진행</h2>
+
+        <label for="levelSelect">범위 선택</label>
+        <select id="levelSelect">
+          <option value="all">전체 단어</option>
+          <option value="one">One Bee</option>
+          <option value="two">Two Bee</option>
+          <option value="three">Three Bee</option>
+        </select>
+
+        <label for="answerInput">철자 입력</label>
+        <input id="answerInput" type="text" placeholder="예: beautiful" autocomplete="off" />
+
+        <div class="row">
+          <button id="nextBtn" class="primary">시작하기</button>
+          <button id="speakBtn" class="secondary">진행자 다시 읽기</button>
+          <button id="checkBtn" class="ghost">제출하기</button>
+          <button id="clearHistoryBtn" class="danger">기록 지우기</button>
+        </div>
+
+        <div id="promptBox" class="promptBox">시작하기를 누르면 첫 문제를 냅니다.</div>
+        <div id="resultBox" class="result"></div>
+      </section>
+
+      <aside class="card">
+        <h2 style="margin-top:0;">점수판</h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">총 문제</div>
+            <div id="totalCount" class="v">0</div>
+          </div>
+          <div class="stat">
+            <div class="k">정답</div>
+            <div id="correctCount" class="v">0</div>
+          </div>
+          <div class="stat">
+            <div class="k">오답</div>
+            <div id="wrongCount" class="v">0</div>
+          </div>
+          <div class="stat">
+            <div class="k">정답률</div>
+            <div id="accuracy" class="v">0%</div>
+          </div>
+        </div>
+
+        <div class="history">
+          <div style="font-weight:800; margin-bottom:8px;">최근 기록</div>
+          <div id="historyList" class="muted">아직 기록이 없습니다.</div>
+        </div>
+
+        <p class="tiny muted" style="margin-top:14px;">
+          정답/오답 안내 후 철자를 읽고 1.5초 쉰 다음, 몇 번째 문제인지 한 번만 말한 뒤 다음 문제를 냅니다.
+        </p>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const WORDS = {
+      one: [
+        "tag","send","deck","stuck","snug","fish","hold","mind","stay","scrub","draw","brown","cozy","cosy","tint","milk","yawn","tank","want","crowd","pond","skirt","sharks","quilt","twigs","taffy","comfy","stretch","tight","candy","scrunch","ruby","close","tackle","wire","skater","giant","bucket","chance","baskets","tender","paste","melon","farmer","parent","tail","hockey","slime","insects","teeth","shortcut","bait","lure","cluster","forest","hollow","spinning","baffling","sizzling","hoist","search","remind","mango","coral","jangle","shimmer","blossoms","swampy","studded","focus","distress","lessons","moment","ajar","basil","triple","satin","ahoy","signal","answer","shuffle","dollop","minnows","silver","before","circus","writing","kitchen","sugar","awkward","seep","sweet","wheels","faint","fruit","roam","goats","woozy","limbs","ahead","señor","unicorn","faraway","heater","pirates","understand","wooden","leaning","breakfast","window","acrobat","message","chocolate","forepaw","elephant","hedgehog","recipe","garbage","surprise","mermaid","bombarded","disability","incredible","leather","countess","nervous","peppercorn","cartwheel","raise","weather","zooming","attacked","turnout","eaten","streetlights","journey","courtyard","shouting","asleep","curious","dinosaur","brilliant","vacuum","gorgeous","monsoon","dangerous","avocado","valentine","February","formation","especially"
+      ],
+      two: [
+        "hesitate","scorcher","scavenger","fragments","deflated","unleash","ration","cosmetics","crawdad","frustration","unruly","mascot","aroma","moustache","mustache","artifacts","artefacts","perfume","sinister","tuxedo","discoveries","lurches","language","prognosis","Buffalo","sequins","gallop","fabulous","lanky","fluently","mysterious","brandished","sardines","anguish","conical","rickety","lilt","pediatric","porridge","democracy","rummage","beige","ancestral","grimace","gaunt","enormous","geranium","nautical","dubious","ebony","foreign","paltry","verdict","garbled","encourages","imitation","miniature","receptionist","preamble","plausible","reprimanding","commotion","oblivion","immigrants","steeple","spectators","lanyards","suspicious","parchment","ramshackle","fugitive","heron","dissolving","nomad","billowed","skewer","Berlin","lunacy","conjure","bracken","noggin","neon","rakish","hypnosis","rotunda","gusto","toiletries","gleaned","jeered","winsome","prattling","galore","emporium","atrium","eccentric","savant","almanac","hippies","samosas","campaign","pistachio","mosque","zombielike","warlock","colossus","convulsively","dimensional","garishly","graffitist","Everest","dexterity","cavorting","marauder","conscience","battlements","deferential","albatross","khaki","opalescent","asphalt","Yiddish","talcum","tranquilizer","equestrian","plaited","monsieur","manticores","prestigious","fraidycat","guttural","lo mein","courier","sans serif","psyche","stucco","Frankenstein","schema","et cetera","vidimus","delphine","slough","archipelago","serape","sarape","puissance","pinioning","chignon","pheromone","galleon","magnanimous","chartreuse","wainscoting","Nehru"
+      ],
+      three: [
+        "gangly","swaggering","chimneys","riveted","plaid","dirge","zeal","whittled","depots","fiberglass","salvaged","fissures","enthusiastic","discipline","unfamiliar","scurrying","dignitaries","pizzeria","dismissal","skittish","careened","nomination","opportunist","dictatorship","comrades","sporadic","promenade","repugnant","invincible","renowned","parachute","laborious","appointment","foreseeable","ratify","scalpel","reclusive","compassionate","bulletin","alfalfa","officially","crematorium","bayonet","amicable","exuberant","beautician","equations","assignment","ultimatum","whinnying","squalor","memoirs","cylinders","ominous","muffler","syndrome","premises","safari","lasagna","substantially","mercantile","formidable","propaganda","marquee","proficient","compunction","emphatically","hyperventilated","ostracism","onslaught","ruefully","misanthrope","prototype","cravenly","mulberry","hypocritical","chlorine","traumatic","receipts","solemnly","begrudge","contentious","precocious","ensemble","cadre","lye","belfry","lacrosse","sluice","cajolery","vigilance","residuals","boutique","peroxide","aristocracy","apocalypse","tuberculosis","barricade","confreres","anonymously","unparalleled","barrette","chassis","junket","quandary","Erie","gingham","silhouette","auxiliary","thesaurus","patriarchs","chandelier","dulce","concierge","latticework","hibiscus","tamale","maracas","gyroplane","burpees","Adriatic","piccolo","au revoir","tulle","boll weevil","camphor","Tucson","paparazzi","pumpernickel","pogrom","bursitis","pâtisserie","cycads","sarsaparilla","maître d'","cannelloni","boulangerie","bronchitis","Oswego","diphtheria","baklava","corbels","trebuchets","Kilimanjaro","fräulein","protégé","hors d'oeuvres","maquisards","Aubusson","Charolais","Charollais"
+      ]
+    };
+
+    const state = {
+      currentWord: null,
+      currentLevel: 'all',
+      total: 0,
+      correct: 0,
+      wrong: 0,
+      history: [],
+      awaitingAnswer: false,
+      started: false,
+      autoNextTimer: null,
+      currentQuestionNumber: 0
+    };
+
+    const el = {
+      levelSelect: document.getElementById('levelSelect'),
+      answerInput: document.getElementById('answerInput'),
+      nextBtn: document.getElementById('nextBtn'),
+      speakBtn: document.getElementById('speakBtn'),
+      checkBtn: document.getElementById('checkBtn'),
+      clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+      promptBox: document.getElementById('promptBox'),
+      resultBox: document.getElementById('resultBox'),
+      totalCount: document.getElementById('totalCount'),
+      correctCount: document.getElementById('correctCount'),
+      wrongCount: document.getElementById('wrongCount'),
+      accuracy: document.getElementById('accuracy'),
+      historyList: document.getElementById('historyList')
+    };
+
+    function getWordPool() {
+      if (state.currentLevel === 'one') return WORDS.one;
+      if (state.currentLevel === 'two') return WORDS.two;
+      if (state.currentLevel === 'three') return WORDS.three;
+      return [...WORDS.one, ...WORDS.two, ...WORDS.three];
+    }
+
+    function pickRandomWord() {
+      const pool = getWordPool();
+      const index = Math.floor(Math.random() * pool.length);
+      return pool[index];
+    }
+
+    function normalizeForCompare(value) {
+      return value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’`´]/g, "'")
+        .replace(/[^a-z' ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function getAcceptedForms(word) {
+      const groups = [
+        ["cozy", "cosy"],
+        ["moustache", "mustache"],
+        ["artifacts", "artefacts"],
+        ["serape", "sarape"],
+        ["Charolais", "Charollais"]
+      ];
+
+      for (const group of groups) {
+        if (group.map(normalizeForCompare).includes(normalizeForCompare(word))) {
+          return group;
+        }
+      }
+      return [word];
+    }
+
+    function updateStats() {
+      el.totalCount.textContent = state.total;
+      el.correctCount.textContent = state.correct;
+      el.wrongCount.textContent = state.wrong;
+      const pct = state.total === 0 ? 0 : Math.round((state.correct / state.total) * 100);
+      el.accuracy.textContent = `${pct}%`;
+    }
+
+    function renderHistory() {
+      if (state.history.length === 0) {
+        el.historyList.innerHTML = '<div class="muted">아직 기록이 없습니다.</div>';
+        return;
+      }
+
+      el.historyList.innerHTML = state.history
+        .slice()
+        .reverse()
+        .map(item => `
+          <div class="historyItem">
+            <div><strong>${item.ok ? '정답' : '오답'}</strong> · <span class="muted">${item.levelLabel}</span></div>
+            <div>문제 ${item.questionNumber}</div>
+            <div>단어: <strong>${item.word}</strong></div>
+            <div>입력: ${item.answer || '<span class="muted">(빈칸)</span>'}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    function levelLabel(value) {
+      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : '전체';
+    }
+
+    function estimateSpeechMs(text, rate = 0.9) {
+      const words = text.trim().split(/\s+/).filter(Boolean).length || 1;
+      return Math.max(900, words * (rate < 0.8 ? 520 : 380));
+    }
+
+    function speak(text, rate = 0.9, cancelPrevious = true) {
+      const estimated = estimateSpeechMs(text, rate);
+      if (!('speechSynthesis' in window)) return estimated;
+      if (cancelPrevious) window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'en-US';
+      utter.rate = rate;
+      utter.pitch = 1;
+      window.speechSynthesis.speak(utter);
+      return estimated;
+    }
+
+    function playTone(ok) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        oscillator.type = ok ? 'sine' : 'square';
+        oscillator.frequency.value = ok ? 880 : 220;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (ok ? 0.22 : 0.32));
+
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + (ok ? 0.24 : 0.34));
+      } catch (e) {
+      }
+    }
+
+    function spellOutWord(word) {
+      const chars = Array.from(word);
+      const spoken = chars.map(ch => {
+        if (ch === ' ') return 'space';
+        if (ch === "'") return 'apostrophe';
+        if (ch === '-') return 'hyphen';
+        return ch;
+      });
+      return spoken.join(', ');
+    }
+
+    function renderPrompt() {
+      if (!state.started) {
+        el.promptBox.textContent = '시작하기를 누르면 첫 문제를 냅니다.';
+        return;
+      }
+
+      if (!state.currentWord) {
+        el.promptBox.textContent = `현재 범위: ${levelLabel(state.currentLevel)}\n다음 문제를 준비하고 있습니다.`;
+        return;
+      }
+
+      const prompt = [
+        `문제 ${state.currentQuestionNumber}`,
+        '',
+        '진행자:',
+        '',
+        'Your word is ready.',
+        '',
+        '단어를 들은 뒤 철자를 입력하고 제출하세요.',
+        '필요하면 “진행자 다시 읽기”를 눌러 다시 들을 수 있습니다.'
+      ].join('\n');
+
+      el.promptBox.textContent = prompt;
+    }
+
+    function updateControls() {
+      el.nextBtn.textContent = state.started ? '진행 중' : '시작하기';
+      el.nextBtn.disabled = state.started;
+      el.answerInput.disabled = !state.awaitingAnswer;
+      el.checkBtn.disabled = !state.awaitingAnswer;
+      el.speakBtn.disabled = !state.currentWord;
+    }
+
+    function askNewWord(questionNumber = null, announceNumber = false) {
+      clearTimeout(state.autoNextTimer);
+      state.started = true;
+      state.currentQuestionNumber = questionNumber ?? (state.total + 1);
+      state.currentWord = pickRandomWord();
+      state.awaitingAnswer = true;
+      el.answerInput.value = '';
+      el.answerInput.focus();
+      el.resultBox.style.display = 'none';
+      renderPrompt();
+      updateControls();
+
+      const prefix = announceNumber ? `Question ${state.currentQuestionNumber}. ` : '';
+      speak(`${prefix}Your word is ${state.currentWord}. Please spell the word.`);
+    }
+
+    function showResult(ok, answerText) {
+      el.resultBox.style.display = 'block';
+      el.resultBox.className = `result ${ok ? 'good' : 'bad'}`;
+      el.resultBox.innerHTML = ok
+        ? `정답!<span class="resultSub">${state.currentWord}</span>`
+        : `오답<span class="resultSub">정답: ${getAcceptedForms(state.currentWord).join(' / ')}<br>입력: ${answerText || '(빈칸)'}</span>`;
+    }
+
+    function scheduleNextQuestion() {
+      const nextQuestionNumber = state.total + 1;
+      state.currentWord = null;
+      renderPrompt();
+      updateControls();
+
+      state.autoNextTimer = setTimeout(() => {
+        askNewWord(nextQuestionNumber, true);
+      }, 1500);
+    }
+
+    function checkAnswer() {
+      if (!state.currentWord || !state.awaitingAnswer) return;
+
+      const raw = el.answerInput.value;
+      const normalized = normalizeForCompare(raw);
+      const acceptedForms = getAcceptedForms(state.currentWord);
+      const accepted = acceptedForms.map(normalizeForCompare);
+      const ok = accepted.includes(normalized);
+      const wordToSpell = ok ? state.currentWord : acceptedForms[0];
+
+      state.awaitingAnswer = false;
+      state.total += 1;
+      if (ok) state.correct += 1;
+      else state.wrong += 1;
+
+      state.history.push({
+        questionNumber: state.currentQuestionNumber,
+        word: state.currentWord,
+        answer: raw,
+        ok,
+        levelLabel: levelLabel(state.currentLevel)
+      });
+
+      showResult(ok, raw);
+      playTone(ok);
+      updateStats();
+      renderHistory();
+      updateControls();
+
+      const resultDelay = speak(ok ? 'Correct.' : 'Incorrect.');
+      state.autoNextTimer = setTimeout(() => {
+        const spellDelay = speak(`The spelling is: ${spellOutWord(wordToSpell)}.`, 0.72);
+        state.autoNextTimer = setTimeout(() => {
+          scheduleNextQuestion();
+        }, spellDelay + 300);
+      }, resultDelay);
+    }
+
+    function clearHistory() {
+      clearTimeout(state.autoNextTimer);
+      state.total = 0;
+      state.correct = 0;
+      state.wrong = 0;
+      state.history = [];
+      state.currentWord = null;
+      state.started = false;
+      state.awaitingAnswer = false;
+      state.currentQuestionNumber = 0;
+      updateStats();
+      renderHistory();
+      el.resultBox.style.display = 'none';
+      renderPrompt();
+      updateControls();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+
+    el.levelSelect.addEventListener('change', (e) => {
+      state.currentLevel = e.target.value;
+      if (!state.awaitingAnswer && !state.started) {
+        renderPrompt();
+      }
+    });
+
+    el.nextBtn.addEventListener('click', () => {
+      if (!state.started) askNewWord(1, true);
+    });
+
+    el.speakBtn.addEventListener('click', () => {
+      if (!state.currentWord) return;
+      speak(`Your word is ${state.currentWord}. Please spell the word.`);
+    });
+
+    el.checkBtn.addEventListener('click', checkAnswer);
+    el.clearHistoryBtn.addEventListener('click', clearHistory);
+
+    el.answerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkAnswer();
+    });
+
+    updateStats();
+    renderHistory();
+    renderPrompt();
+    updateControls();
+  </script>
+</body>
+</html>
