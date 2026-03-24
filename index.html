@@ -320,7 +320,7 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="pill">Version 22</div>
+      <div class="pill">Version 23</div>
       <h1>Spelling Bee Practice</h1>
     </section>
 
@@ -328,12 +328,14 @@
       <section class="card">
         <h2 style="margin-top:0;">연습 진행</h2>
 
-        <label for="historyFileInput">오답 TXT 불러오기</label>
-        <div class="fileRow">
-          <input id="historyFileInput" type="file" accept=".txt,text/plain" />
-          <button id="clearReviewBtn" class="ghost" type="button">오답 복습 해제</button>
+        <div id="reviewLoaderSection">
+          <label for="historyFileInput">오답 TXT 불러오기</label>
+          <div class="fileRow">
+            <input id="historyFileInput" type="file" accept=".txt,text/plain" />
+            <button id="clearReviewBtn" class="ghost" type="button">오답 복습 해제</button>
+          </div>
+          <div id="reviewStatus" class="statusLine" style="display:none;"></div>
         </div>
-        <div id="reviewStatus" class="statusLine" style="display:none;"></div>
 
         <div id="practiceOptions">
           <label for="levelSelect">범위 선택</label>
@@ -449,6 +451,7 @@
       historyFileInput: document.getElementById('historyFileInput'),
       clearReviewBtn: document.getElementById('clearReviewBtn'),
       reviewStatus: document.getElementById('reviewStatus'),
+      reviewLoaderSection: document.getElementById('reviewLoaderSection'),
       progressNote: document.getElementById('progressNote'),
       answerInput: document.getElementById('answerInput'),
       nextBtn: document.getElementById('nextBtn'),
@@ -910,6 +913,7 @@
       el.noRepeatCheck.disabled = state.started;
       el.noRepeatWrap.classList.toggle('isLocked', state.started);
       el.practiceOptions.style.display = state.started ? 'none' : 'block';
+      if (el.reviewLoaderSection) el.reviewLoaderSection.style.display = state.started ? 'none' : 'block';
       if (el.historyFileInput) el.historyFileInput.disabled = state.started;
       el.answerInput.disabled = !state.awaitingAnswer;
       el.checkBtn.disabled = !state.awaitingAnswer;
