@@ -320,7 +320,7 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="pill">Version 23</div>
+      <div class="pill">Version 27</div>
       <h1>Spelling Bee Practice</h1>
     </section>
 
@@ -329,10 +329,16 @@
         <h2 style="margin-top:0;">연습 진행</h2>
 
         <div id="reviewLoaderSection">
-          <label for="historyFileInput">오답 TXT 불러오기</label>
+          <label for="loadModeSelect">불러오기 방식</label>
+          <select id="loadModeSelect">
+            <option value="resume">저장 시점 그대로 이어하기</option>
+            <option value="wrongOnly">오답 단어만 복습하기</option>
+          </select>
+          
+          <label for="historyFileInput">최근 기록 TXT 불러오기</label>
           <div class="fileRow">
             <input id="historyFileInput" type="file" accept=".txt,text/plain" />
-            <button id="clearReviewBtn" class="ghost" type="button">오답 복습 해제</button>
+            <button id="clearReviewBtn" class="ghost" type="button">불러오기 해제</button>
           </div>
           <div id="reviewStatus" class="statusLine" style="display:none;"></div>
         </div>
@@ -434,13 +440,16 @@
       reviewWrongWords: [],
       reviewSourceName: '',
       reviewStatusMessage: '',
-      usedWordsByScope: {
-        all: new Set(),
-        one: new Set(),
-        two: new Set(),
-        three: new Set(),
-        review: new Set()
-      }
+      lastResult: null,
+      loadedSnapshotFileName: '',
+      loadedSnapshotSavedAt: '',
+      loadedFileMode: '',
+      usedWordsByScope: createEmptyUsedWordsByScope()
+    };
+
+    const loadedFileCache = {
+      text: '',
+      name: ''
     };
 
     const el = {
@@ -448,6 +457,7 @@
       noRepeatWrap: document.getElementById('noRepeatWrap'),
       noRepeatCheck: document.getElementById('noRepeatCheck'),
       practiceOptions: document.getElementById('practiceOptions'),
+      loadModeSelect: document.getElementById('loadModeSelect'),
       historyFileInput: document.getElementById('historyFileInput'),
       clearReviewBtn: document.getElementById('clearReviewBtn'),
       reviewStatus: document.getElementById('reviewStatus'),
@@ -496,6 +506,27 @@
       'Nehru': 'NAY-roo'
     };
 
+    function createEmptyUsedWordsByScope() {
+      return {
+        all: new Set(),
+        one: new Set(),
+        two: new Set(),
+        three: new Set(),
+        review: new Set()
+      };
+    }
+
+    function normalizeForCompare(value) {
+      return String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’`´]/g, "'")
+        .replace(/[^a-z' ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function getPreferredWord(word) {
       const normalized = normalizeForCompare(word);
       for (const [alternate, preferred] of Object.entries(PREFERRED_SPELLINGS)) {
@@ -525,8 +556,38 @@
       return state.reviewMode ? 'review' : state.currentLevel;
     }
 
+    function levelLabel(value) {
+      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : '전체';
+    }
+
     function currentPracticeLabel() {
       return state.reviewMode ? '오답 복습' : levelLabel(state.currentLevel);
+    }
+
+    function getPoolWordsForScope(scopeKey, options = {}) {
+      const currentLevel = options.currentLevel || state.currentLevel;
+      const reviewMode = options.reviewMode !== undefined ? options.reviewMode : state.reviewMode;
+      const reviewWrongWords = options.reviewWrongWords || state.reviewWrongWords;
+
+      if ((scopeKey === 'review' || reviewMode) && reviewWrongWords.length > 0) {
+        return Array.from(new Set(reviewWrongWords.map(getPreferredWord)));
+      }
+
+      let pool = [];
+      if (scopeKey === 'one' || currentLevel === 'one' && scopeKey === 'all') pool = WORDS.one;
+      else if (scopeKey === 'two' || currentLevel === 'two' && scopeKey === 'all') pool = WORDS.two;
+      else if (scopeKey === 'three' || currentLevel === 'three' && scopeKey === 'all') pool = WORDS.three;
+      else if (scopeKey === 'one') pool = WORDS.one;
+      else if (scopeKey === 'two') pool = WORDS.two;
+      else if (scopeKey === 'three') pool = WORDS.three;
+      else {
+        if (currentLevel === 'one') pool = WORDS.one;
+        else if (currentLevel === 'two') pool = WORDS.two;
+        else if (currentLevel === 'three') pool = WORDS.three;
+        else pool = [...WORDS.one, ...WORDS.two, ...WORDS.three];
+      }
+
+      return Array.from(new Set(pool.map(getPreferredWord)));
     }
 
     function getWordPool() {
@@ -534,13 +595,15 @@
         return Array.from(new Set(state.reviewWrongWords.map(getPreferredWord)));
       }
 
-      let pool = [];
-      if (state.currentLevel === 'one') pool = WORDS.one;
-      else if (state.currentLevel === 'two') pool = WORDS.two;
-      else if (state.currentLevel === 'three') pool = WORDS.three;
-      else pool = [...WORDS.one, ...WORDS.two, ...WORDS.three];
+      if (state.currentLevel === 'one') return Array.from(new Set(WORDS.one.map(getPreferredWord)));
+      if (state.currentLevel === 'two') return Array.from(new Set(WORDS.two.map(getPreferredWord)));
+      if (state.currentLevel === 'three') return Array.from(new Set(WORDS.three.map(getPreferredWord)));
 
-      return Array.from(new Set(pool.map(getPreferredWord)));
+      return Array.from(new Set([...WORDS.one, ...WORDS.two, ...WORDS.three].map(getPreferredWord)));
+    }
+
+    function getCurrentPoolSize() {
+      return getWordPool().length;
     }
 
     function pickRandomWord() {
@@ -567,17 +630,6 @@
       return chosen;
     }
 
-    function normalizeForCompare(value) {
-      return value
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[’`´]/g, "'")
-        .replace(/[^a-z' ]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
     function getAcceptedForms(word) {
       return [getPreferredWord(word)];
     }
@@ -596,220 +648,6 @@
       const spokenWord = getWordToSpeak(word);
       const prefix = questionNumber ? `Question ${questionNumber}. ` : '';
       return speak(`${prefix}Your word is ${spokenWord}. Please spell the word.`, 0.9, cancelPrevious);
-    }
-
-    function buildHistoryText() {
-      const lines = [
-        'Spelling Bee Practice Recent History',
-        `Saved at: ${new Date().toLocaleString()}`,
-        `Range: ${currentPracticeLabel()}`,
-        `No-repeat option: ${el.noRepeatCheck.checked ? 'ON' : 'OFF'}`,
-        '',
-        `Total: ${state.total}`,
-        `Correct: ${state.correct}`,
-        `Wrong: ${state.wrong}`,
-        `Accuracy: ${el.accuracy.textContent}`,
-        '',
-        'Recent Records',
-        '------------------------------'
-      ];
-
-      if (state.history.length === 0) {
-        lines.push('No records yet.');
-      } else {
-        state.history.forEach(item => {
-          lines.push(
-            `Question ${item.questionNumber} | ${item.ok ? 'Correct' : 'Wrong'} | ${item.levelLabel}`,
-            `Word: ${item.word}`,
-            `Answer: ${item.answer || '(blank)'}`,
-            ''
-          );
-        });
-      }
-
-      return lines.join('\n');
-    }
-
-    function saveHistoryAsText() {
-      const blob = new Blob([buildHistoryText()], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.href = url;
-      link.download = `spelling-bee-history-${stamp}.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-
-
-    function parseWrongWordsFromHistoryText(text) {
-      const lines = text.split(/\r?\n/);
-      const wrongWords = [];
-
-      for (let i = 0; i < lines.length; i += 1) {
-        const header = lines[i].trim();
-        if (!/^Question\s+\d+\s*\|\s*Wrong\s*\|/i.test(header)) continue;
-
-        const wordLine = (lines[i + 1] || '').trim();
-        const match = wordLine.match(/^Word:\s*(.+?)\s*$/i);
-        if (!match) continue;
-
-        const resolved = resolveKnownWord(match[1]);
-        if (resolved) wrongWords.push(resolved);
-      }
-
-      return Array.from(new Set(wrongWords));
-    }
-
-    async function loadWrongWordsFromFile(file) {
-      try {
-        const text = await file.text();
-        const wrongWords = parseWrongWordsFromHistoryText(text);
-
-        if (wrongWords.length === 0) {
-          state.reviewMode = false;
-          state.reviewWrongWords = [];
-          state.reviewSourceName = '';
-          state.reviewStatusMessage = 'TXT에서 불러온 오답 단어를 찾지 못했습니다.';
-          state.usedWordsByScope.review = new Set();
-          updateReviewStatus();
-          renderPrompt();
-          updateControls();
-          return;
-        }
-
-        state.reviewMode = true;
-        state.reviewWrongWords = wrongWords;
-        state.reviewSourceName = file.name;
-        state.reviewStatusMessage = '';
-        state.usedWordsByScope.review = new Set();
-        updateReviewStatus();
-        renderPrompt();
-        updateControls();
-      } catch (error) {
-        state.reviewMode = false;
-        state.reviewWrongWords = [];
-        state.reviewSourceName = '';
-        state.reviewStatusMessage = 'TXT 파일을 읽는 중 문제가 발생했습니다.';
-        state.usedWordsByScope.review = new Set();
-        updateReviewStatus();
-        renderPrompt();
-        updateControls();
-      }
-    }
-
-    function clearReviewMode() {
-      state.reviewMode = false;
-      state.reviewWrongWords = [];
-      state.reviewSourceName = '';
-      state.reviewStatusMessage = '';
-      state.usedWordsByScope.review = new Set();
-      if (el.historyFileInput) el.historyFileInput.value = '';
-      updateReviewStatus();
-      renderPrompt();
-      updateControls();
-    }
-
-    function updateReviewStatus() {
-      if (!el.reviewStatus) return;
-
-      let message = '';
-      if (state.reviewStatusMessage) {
-        message = state.reviewStatusMessage;
-      } else if (state.reviewMode && state.reviewWrongWords.length > 0) {
-        message = `불러온 파일: ${state.reviewSourceName} · 오답 단어 ${state.reviewWrongWords.length}개`;
-      }
-
-      el.reviewStatus.textContent = message;
-      el.reviewStatus.style.display = message ? 'block' : 'none';
-
-      if (el.clearReviewBtn) {
-        el.clearReviewBtn.disabled = state.started || !state.reviewMode;
-      }
-    }
-
-    function getCurrentPoolSize() {
-      return getWordPool().length;
-    }
-
-    function updateProgressNote() {
-      if (!state.started || !state.currentWord || !el.noRepeatCheck.checked) {
-        el.progressNote.style.display = 'none';
-        el.progressNote.textContent = '';
-        return;
-      }
-
-      const totalWords = getCurrentPoolSize();
-      const currentOrder = Math.min(state.currentWordOrder || 0, totalWords || 0);
-      el.progressNote.style.display = 'block';
-      el.progressNote.textContent = `현재 순서: ${currentOrder} / ${totalWords}`;
-    }
-
-    function renderAnswerLabels(word) {
-      el.detailBox.innerHTML = '';
-      el.detailBox.style.display = 'none';
-
-      const key = getDetailKeyForWord(word);
-      if (!key || !DETAILS[key]) {
-        el.promptBox.innerHTML = [
-          `<strong>단어 :</strong> ${word}`,
-          '',
-          '<strong>한글 :</strong> -',
-          '',
-          '<strong>영영 사전 :</strong> -',
-          '',
-          '<strong>예문 :</strong> -'
-        ].join('<br>');
-        el.detailBox.style.display = 'none';
-        return;
-      }
-
-      const info = DETAILS[key];
-      el.promptBox.innerHTML = [
-        `<strong>단어 :</strong> ${info.word || word}`,
-        '',
-        `<strong>한글 :</strong> ${info.ko || '-'}`,
-        '',
-        `<strong>영영 사전 :</strong> ${info.en || '-'}`,
-        '',
-        `<strong>예문 :</strong> ${info.ex || '-'}`
-      ].join('<br>');
-
-      el.detailBox.style.display = 'none';
-    }
-
-    function updateStats() {
-      el.totalCount.textContent = state.total;
-      el.correctCount.textContent = state.correct;
-      el.wrongCount.textContent = state.wrong;
-      const pct = state.total === 0 ? 0 : Math.round((state.correct / state.total) * 100);
-      el.accuracy.textContent = `${pct}%`;
-    }
-
-    function renderHistory() {
-      if (state.history.length === 0) {
-        el.historyList.innerHTML = '<div class="muted">아직 기록이 없습니다.</div>';
-        return;
-      }
-
-      el.historyList.innerHTML = state.history
-        .slice()
-        .reverse()
-        .map(item => `
-          <div class="historyItem">
-            <div><strong>${item.ok ? '정답' : '오답'}</strong> · <span class="muted">${item.levelLabel}</span></div>
-            <div>문제 ${item.questionNumber}</div>
-            <div>단어: <strong>${item.word}</strong></div>
-            <div>입력: ${item.answer || '<span class="muted">(빈칸)</span>'}</div>
-          </div>
-        `)
-        .join('');
-    }
-
-    function levelLabel(value) {
-      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : '전체';
     }
 
     function estimateSpeechMs(text, rate = 0.9) {
@@ -875,9 +713,671 @@
       return spoken.join(', ');
     }
 
+    function safeNumber(value, fallback = 0) {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    }
+
+    function normalizeScopeKey(value, fallback = 'all') {
+      return ['all', 'one', 'two', 'three', 'review'].includes(value) ? value : fallback;
+    }
+
+    function sanitizeHistoryItem(item) {
+      if (!item || typeof item !== 'object') return null;
+
+      const resolvedWord = resolveKnownWord(item.word);
+      if (!resolvedWord) return null;
+
+      const scopeKey = normalizeScopeKey(
+        item.scopeKey,
+        item.levelLabel === 'One Bee'
+          ? 'one'
+          : item.levelLabel === 'Two Bee'
+            ? 'two'
+            : item.levelLabel === 'Three Bee'
+              ? 'three'
+              : item.levelLabel === '오답 복습'
+                ? 'review'
+                : 'all'
+      );
+
+      const levelLabelText = item.levelLabel || (scopeKey === 'review' ? '오답 복습' : levelLabel(scopeKey));
+
+      return {
+        questionNumber: safeNumber(item.questionNumber, 0),
+        word: resolvedWord,
+        answer: String(item.answer || ''),
+        ok: Boolean(item.ok),
+        levelLabel: levelLabelText,
+        scopeKey
+      };
+    }
+
+    function serializeUsedWordsByScope() {
+      const result = {};
+      Object.entries(state.usedWordsByScope).forEach(([key, set]) => {
+        result[key] = Array.from(set || []).map(value => resolveKnownWord(value) || value);
+      });
+      return result;
+    }
+
+    function deriveUsedWordsByScopeFromHistory(history, snapshotState = {}) {
+      const used = createEmptyUsedWordsByScope();
+
+      history.forEach(item => {
+        if (!item || !item.word) return;
+        const key = normalizeScopeKey(item.scopeKey, 'all');
+        used[key].add(normalizeForCompare(item.word));
+      });
+
+      if (snapshotState.started && snapshotState.currentWord && snapshotState.noRepeatChecked) {
+        const currentScope = snapshotState.reviewMode ? 'review' : normalizeScopeKey(snapshotState.currentLevel, 'all');
+        used[currentScope].add(normalizeForCompare(snapshotState.currentWord));
+      }
+
+      return used;
+    }
+
+    function createSessionSnapshot() {
+      return {
+        format: 'spelling-bee-session',
+        version: 27,
+        savedAt: new Date().toISOString(),
+        state: {
+          currentWord: state.currentWord,
+          currentLevel: state.currentLevel,
+          total: state.total,
+          correct: state.correct,
+          wrong: state.wrong,
+          history: state.history.map(item => ({
+            questionNumber: item.questionNumber,
+            word: item.word,
+            answer: item.answer,
+            ok: item.ok,
+            levelLabel: item.levelLabel,
+            scopeKey: item.scopeKey || 'all'
+          })),
+          awaitingAnswer: state.awaitingAnswer,
+          started: state.started,
+          currentQuestionNumber: state.currentQuestionNumber,
+          currentWordOrder: state.currentWordOrder,
+          awaitingNext: state.awaitingNext,
+          reviewMode: state.reviewMode,
+          reviewWrongWords: state.reviewWrongWords.slice(),
+          reviewSourceName: state.reviewSourceName,
+          noRepeatChecked: el.noRepeatCheck.checked,
+          lastResult: state.lastResult ? { ...state.lastResult } : null,
+          usedWordsByScope: serializeUsedWordsByScope()
+        }
+      };
+    }
+
+    function getProgressInfoFromStateSnapshot(snapshotState) {
+      if (!snapshotState) return null;
+
+      if (!snapshotState.noRepeatChecked) {
+        if (!snapshotState.started && safeNumber(snapshotState.total, 0) === 0) return null;
+        return {
+          label: '진행한 문제 수',
+          count: safeNumber(snapshotState.total, 0),
+          totalWords: null
+        };
+      }
+
+      const scopeKey = snapshotState.reviewMode ? 'review' : normalizeScopeKey(snapshotState.currentLevel, 'all');
+      const usedWords = snapshotState.usedWordsByScope || {};
+      const rawUsed = Array.isArray(usedWords[scopeKey]) ? usedWords[scopeKey] : [];
+      const usedSet = new Set(rawUsed.map(word => normalizeForCompare(resolveKnownWord(word) || word)).filter(Boolean));
+
+      const totalWords = getPoolWordsForScope(scopeKey, {
+        currentLevel: snapshotState.currentLevel,
+        reviewMode: snapshotState.reviewMode,
+        reviewWrongWords: snapshotState.reviewWrongWords || []
+      }).length;
+
+      let count = Math.min(usedSet.size, totalWords);
+      if (safeNumber(snapshotState.currentWordOrder, 0) > count) {
+        count = Math.min(safeNumber(snapshotState.currentWordOrder, 0), totalWords);
+      }
+
+      if (!snapshotState.started && count === 0 && safeNumber(snapshotState.total, 0) === 0) return null;
+
+      return {
+        label: '진행한 단어 수',
+        count,
+        totalWords
+      };
+    }
+
+    function buildHistoryText() {
+      const snapshot = createSessionSnapshot();
+      const savedState = snapshot.state;
+      const progressInfo = getProgressInfoFromStateSnapshot(savedState);
+
+      const lines = [
+        'Spelling Bee Practice Recent History',
+        `Saved at: ${new Date(snapshot.savedAt).toLocaleString()}`,
+        `Range: ${savedState.reviewMode ? '오답 복습' : levelLabel(savedState.currentLevel)}`,
+        `No-repeat option: ${savedState.noRepeatChecked ? 'ON' : 'OFF'}`
+      ];
+
+      if (progressInfo) {
+        if (progressInfo.totalWords == null) {
+          lines.push(`${progressInfo.label}: ${progressInfo.count}`);
+        } else {
+          lines.push(`${progressInfo.label}: ${progressInfo.count} / ${progressInfo.totalWords}`);
+        }
+      }
+
+      if (savedState.started) {
+        if (savedState.awaitingAnswer && savedState.currentWord) {
+          lines.push(`Current question: ${savedState.currentQuestionNumber} (in progress)`);
+        } else if (savedState.awaitingNext) {
+          lines.push(`Current question: ${savedState.currentQuestionNumber} (waiting for next)`);
+        }
+      }
+
+      lines.push(
+        '',
+        `Total: ${state.total}`,
+        `Correct: ${state.correct}`,
+        `Wrong: ${state.wrong}`,
+        `Accuracy: ${el.accuracy.textContent}`,
+        '',
+        'Recent Records',
+        '------------------------------'
+      );
+
+      if (state.history.length === 0) {
+        lines.push('No records yet.');
+      } else {
+        state.history.forEach(item => {
+          lines.push(
+            `Question ${item.questionNumber} | ${item.ok ? 'Correct' : 'Wrong'} | ${item.levelLabel}`,
+            `Word: ${item.word}`,
+            `Answer: ${item.answer || '(blank)'}`,
+            ''
+          );
+        });
+      }
+
+      lines.push(
+        '',
+        '=== SESSION SNAPSHOT START ===',
+        JSON.stringify(snapshot, null, 2),
+        '=== SESSION SNAPSHOT END ==='
+      );
+
+      return lines.join('\n');
+    }
+
+    function saveHistoryAsText() {
+      const blob = new Blob([buildHistoryText()], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.href = url;
+      link.download = `spelling-bee-history-${stamp}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function parseWrongWordsFromHistoryText(text) {
+      const lines = text.split(/\r?\n/);
+      const wrongWords = [];
+
+      for (let i = 0; i < lines.length; i += 1) {
+        const header = lines[i].trim();
+        if (!/^Question\s+\d+\s*\|\s*Wrong\s*\|/i.test(header)) continue;
+
+        const wordLine = (lines[i + 1] || '').trim();
+        const match = wordLine.match(/^Word:\s*(.+?)\s*$/i);
+        if (!match) continue;
+
+        const resolved = resolveKnownWord(match[1]);
+        if (resolved) wrongWords.push(resolved);
+      }
+
+      return Array.from(new Set(wrongWords));
+    }
+
+    function extractSessionSnapshot(text) {
+      const match = text.match(/=== SESSION SNAPSHOT START ===\s*([\s\S]*?)\s*=== SESSION SNAPSHOT END ===/);
+      if (!match) return null;
+
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (parsed && parsed.format === 'spelling-bee-session' && parsed.state) {
+          return parsed;
+        }
+      } catch (error) {
+      }
+
+      return null;
+    }
+
+    function hideResultAndDetails() {
+      el.resultBox.style.display = 'none';
+      el.detailBox.style.display = 'none';
+      el.detailBox.innerHTML = '';
+    }
+
+    function focusAnswerInput() {
+      setTimeout(() => {
+        if (!el.answerInput.disabled) {
+          el.answerInput.focus();
+          el.answerInput.select();
+        }
+      }, 0);
+    }
+
+    function resetPracticeState(options = {}) {
+      const preserveFileInput = Boolean(options.preserveFileInput);
+      clearTimeout(state.autoNextTimer);
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+      state.currentWord = null;
+      state.currentLevel = 'all';
+      state.total = 0;
+      state.correct = 0;
+      state.wrong = 0;
+      state.history = [];
+      state.awaitingAnswer = false;
+      state.started = false;
+      state.autoNextTimer = null;
+      state.currentQuestionNumber = 0;
+      state.currentWordOrder = 0;
+      state.awaitingNext = false;
+      state.reviewMode = false;
+      state.reviewWrongWords = [];
+      state.reviewSourceName = '';
+      state.reviewStatusMessage = '';
+      state.lastResult = null;
+      state.loadedSnapshotFileName = '';
+      state.loadedSnapshotSavedAt = '';
+      state.loadedFileMode = '';
+      state.usedWordsByScope = createEmptyUsedWordsByScope();
+
+      el.levelSelect.value = 'all';
+      el.noRepeatCheck.checked = true;
+      el.answerInput.value = '';
+      if (el.loadModeSelect && !preserveFileInput) el.loadModeSelect.value = 'resume';
+      if (el.historyFileInput && !preserveFileInput) el.historyFileInput.value = '';
+      hideResultAndDetails();
+    }
+
+    function showResult(ok, answerText, wordOverride = null) {
+      const displayWord = wordOverride || state.currentWord;
+      el.resultBox.style.display = 'block';
+      el.resultBox.className = `result ${ok ? 'good' : 'bad'}`;
+      el.resultBox.innerHTML = ok
+        ? `정답!<span class="resultSub">${displayWord}</span>`
+        : `오답<span class="resultSub">정답: ${getAcceptedForms(displayWord).join(' / ')}<br>입력: ${answerText || '(빈칸)'}</span>`;
+      renderAnswerLabels(displayWord);
+    }
+
+    function restoreResultView() {
+      if (state.awaitingNext && state.lastResult && state.lastResult.word) {
+        showResult(Boolean(state.lastResult.ok), state.lastResult.answer || '', state.lastResult.word);
+      } else {
+        hideResultAndDetails();
+      }
+    }
+
+    function applyLoadedUsedWords(rawUsedWords, fallbackHistory) {
+      const nextUsedWords = createEmptyUsedWordsByScope();
+      let restoredAnything = false;
+
+      if (rawUsedWords && typeof rawUsedWords === 'object') {
+        Object.keys(nextUsedWords).forEach(key => {
+          const values = Array.isArray(rawUsedWords[key]) ? rawUsedWords[key] : [];
+          values.forEach(word => {
+            const resolved = resolveKnownWord(word);
+            if (!resolved) return;
+            nextUsedWords[key].add(normalizeForCompare(resolved));
+            restoredAnything = true;
+          });
+        });
+      }
+
+      if (!restoredAnything) {
+        return deriveUsedWordsByScopeFromHistory(fallbackHistory, {
+          started: state.started,
+          currentWord: state.currentWord,
+          noRepeatChecked: el.noRepeatCheck.checked,
+          reviewMode: state.reviewMode,
+          currentLevel: state.currentLevel
+        });
+      }
+
+      if (state.started && state.currentWord && el.noRepeatCheck.checked) {
+        const key = getPoolKey();
+        nextUsedWords[key].add(normalizeForCompare(state.currentWord));
+      }
+
+      return nextUsedWords;
+    }
+
+    function extractWrongWordsFromSnapshot(snapshot) {
+      const snapshotState = snapshot && snapshot.state ? snapshot.state : null;
+      if (!snapshotState) return [];
+
+      const wrongWords = [];
+
+      if (Array.isArray(snapshotState.history)) {
+        snapshotState.history.forEach(item => {
+          const sanitized = sanitizeHistoryItem(item);
+          if (sanitized && !sanitized.ok) wrongWords.push(sanitized.word);
+        });
+      }
+
+      if (wrongWords.length === 0 && Array.isArray(snapshotState.reviewWrongWords)) {
+        snapshotState.reviewWrongWords.forEach(word => {
+          const resolved = resolveKnownWord(word);
+          if (resolved) wrongWords.push(resolved);
+        });
+      }
+
+      return Array.from(new Set(wrongWords));
+    }
+
+    function applyWrongWordReview(wrongWords, fileName) {
+      resetPracticeState({ preserveFileInput: true });
+
+      if (wrongWords.length === 0) {
+        state.reviewStatusMessage = '이 TXT 안에서 오답 단어를 찾지 못했습니다.';
+        updateStats();
+        renderHistory();
+        renderPrompt();
+        updateControls();
+        return;
+      }
+
+      state.reviewMode = true;
+      state.reviewWrongWords = wrongWords;
+      state.reviewSourceName = fileName || '';
+      state.loadedFileMode = 'wrongOnly';
+      state.reviewStatusMessage = '';
+      updateStats();
+      renderHistory();
+      renderPrompt();
+      updateControls();
+    }
+
+    function applyLoadedText(text, fileName) {
+      const snapshot = extractSessionSnapshot(text);
+      const loadMode = el.loadModeSelect ? el.loadModeSelect.value : 'resume';
+
+      if (loadMode === 'resume') {
+        if (snapshot) {
+          applySessionSnapshot(snapshot, fileName);
+          return;
+        }
+
+        resetPracticeState({ preserveFileInput: true });
+        state.reviewStatusMessage = '이 파일에는 이어하기용 세션 정보가 없습니다. 불러오기 방식을 “오답 단어만 복습하기”로 바꾸면 사용할 수 있습니다.';
+        updateStats();
+        renderHistory();
+        renderPrompt();
+        updateControls();
+        return;
+      }
+
+      const wrongWords = snapshot ? extractWrongWordsFromSnapshot(snapshot) : parseWrongWordsFromHistoryText(text);
+      applyWrongWordReview(wrongWords, fileName);
+    }
+
+    function applySessionSnapshot(snapshot, fileName) {
+      resetPracticeState({ preserveFileInput: true });
+
+      const snapshotState = snapshot && snapshot.state ? snapshot.state : null;
+      if (!snapshotState) throw new Error('invalid snapshot');
+
+      state.currentLevel = normalizeScopeKey(snapshotState.currentLevel, 'all');
+      el.levelSelect.value = state.currentLevel;
+      el.noRepeatCheck.checked = snapshotState.noRepeatChecked !== false;
+
+      state.total = safeNumber(snapshotState.total, 0);
+      state.correct = safeNumber(snapshotState.correct, 0);
+      state.wrong = safeNumber(snapshotState.wrong, 0);
+      state.currentQuestionNumber = safeNumber(snapshotState.currentQuestionNumber, Math.max(state.total + 1, 1));
+      state.currentWordOrder = safeNumber(snapshotState.currentWordOrder, 0);
+      state.started = Boolean(snapshotState.started);
+      state.awaitingAnswer = Boolean(snapshotState.awaitingAnswer);
+      state.awaitingNext = Boolean(snapshotState.awaitingNext);
+
+      state.reviewMode = Boolean(snapshotState.reviewMode);
+      state.reviewWrongWords = Array.isArray(snapshotState.reviewWrongWords)
+        ? Array.from(new Set(snapshotState.reviewWrongWords.map(resolveKnownWord).filter(Boolean)))
+        : [];
+      state.reviewSourceName = String(snapshotState.reviewSourceName || '');
+
+      state.currentWord = resolveKnownWord(snapshotState.currentWord);
+      state.history = Array.isArray(snapshotState.history)
+        ? snapshotState.history.map(sanitizeHistoryItem).filter(Boolean)
+        : [];
+
+      const loadedLastResult = snapshotState.lastResult && typeof snapshotState.lastResult === 'object'
+        ? {
+            ok: Boolean(snapshotState.lastResult.ok),
+            answer: String(snapshotState.lastResult.answer || ''),
+            word: resolveKnownWord(snapshotState.lastResult.word) || state.currentWord || (state.history.length ? state.history[state.history.length - 1].word : null)
+          }
+        : null;
+
+      state.lastResult = loadedLastResult;
+
+      if (!state.lastResult && state.awaitingNext) {
+        const lastHistory = state.history[state.history.length ? state.history.length - 1 : -1];
+        if (lastHistory && state.currentWord && normalizeForCompare(lastHistory.word) === normalizeForCompare(state.currentWord)) {
+          state.lastResult = {
+            ok: Boolean(lastHistory.ok),
+            answer: lastHistory.answer || '',
+            word: state.currentWord
+          };
+        }
+      }
+
+      state.usedWordsByScope = applyLoadedUsedWords(snapshotState.usedWordsByScope, state.history);
+
+      if (state.reviewMode && state.reviewWrongWords.length === 0) {
+        state.reviewMode = false;
+      }
+
+      if (!state.started) {
+        state.awaitingAnswer = false;
+        state.awaitingNext = false;
+        state.currentWord = null;
+        state.lastResult = null;
+      }
+
+      if (state.started && !state.currentWord) {
+        state.awaitingAnswer = false;
+        state.awaitingNext = false;
+      }
+
+      state.loadedSnapshotFileName = fileName || '';
+      state.loadedSnapshotSavedAt = String(snapshot.savedAt || '');
+      state.loadedFileMode = 'resume';
+
+      el.answerInput.value = '';
+      updateStats();
+      renderHistory();
+      renderPrompt();
+      restoreResultView();
+      updateControls();
+
+      if (state.awaitingAnswer) {
+        el.answerInput.focus();
+      }
+    }
+
+    async function loadSessionOrWrongWordsFromFile(file) {
+      try {
+        const text = await file.text();
+        loadedFileCache.text = text;
+        loadedFileCache.name = file.name;
+        applyLoadedText(text, file.name);
+      } catch (error) {
+        resetPracticeState({ preserveFileInput: true });
+        state.reviewStatusMessage = 'TXT 파일을 읽는 중 문제가 발생했습니다.';
+        updateStats();
+        renderHistory();
+        renderPrompt();
+        updateControls();
+      }
+    }
+
+    function clearLoadedPracticeFile() {
+      if (state.started) return;
+      loadedFileCache.text = '';
+      loadedFileCache.name = '';
+      resetPracticeState();
+      updateStats();
+      renderHistory();
+      renderPrompt();
+      updateControls();
+    }
+
+    function updateReviewStatus() {
+      if (!el.reviewStatus) return;
+
+      let message = '';
+
+      if (state.loadedSnapshotFileName) {
+        const savedAtText = state.loadedSnapshotSavedAt
+          ? new Date(state.loadedSnapshotSavedAt).toLocaleString()
+          : '';
+        message = `불러온 파일: ${state.loadedSnapshotFileName} · 이어하기 모드`;
+        if (savedAtText) message += ` · 저장 시각 ${savedAtText}`;
+      } else if (state.reviewMode && state.reviewWrongWords.length > 0) {
+        message = `불러온 파일: ${state.reviewSourceName} · 오답 복습 모드 · 오답 단어 ${state.reviewWrongWords.length}개`;
+      } else if (state.reviewStatusMessage) {
+        message = state.reviewStatusMessage;
+      }
+
+      el.reviewStatus.textContent = message;
+      el.reviewStatus.style.display = message ? 'block' : 'none';
+
+      if (el.clearReviewBtn) {
+        el.clearReviewBtn.textContent = '불러오기 해제';
+        el.clearReviewBtn.disabled = state.started || (!loadedFileCache.text && !state.loadedSnapshotFileName && !state.reviewMode && !state.reviewStatusMessage);
+      }
+    }
+
+    function getProgressDisplayInfo() {
+      if (el.noRepeatCheck.checked) {
+        const totalWords = getCurrentPoolSize();
+        if (totalWords === 0) return null;
+
+        let completedCount = 0;
+        const usedSet = state.usedWordsByScope[getPoolKey()] || new Set();
+        completedCount = usedSet.size;
+
+        if (state.currentWordOrder > completedCount) {
+          completedCount = state.currentWordOrder;
+        }
+
+        completedCount = Math.min(completedCount, totalWords);
+
+        if (!state.started && state.total === 0 && !state.loadedSnapshotFileName && !state.reviewMode) {
+          return null;
+        }
+
+        return {
+          text: `진행한 단어 수: ${completedCount} / ${totalWords}`
+        };
+      }
+
+      if (!state.started && state.total === 0 && !state.loadedSnapshotFileName && !state.reviewMode) {
+        return null;
+      }
+
+      return {
+        text: `진행한 문제 수: ${state.total}`
+      };
+    }
+
+    function updateProgressNote() {
+      const info = getProgressDisplayInfo();
+      if (!info) {
+        el.progressNote.style.display = 'none';
+        el.progressNote.textContent = '';
+        return;
+      }
+
+      el.progressNote.style.display = 'block';
+      el.progressNote.textContent = info.text;
+    }
+
+    function renderAnswerLabels(word) {
+      el.detailBox.innerHTML = '';
+      el.detailBox.style.display = 'none';
+
+      const key = getDetailKeyForWord(word);
+      if (!key || !DETAILS[key]) {
+        el.promptBox.innerHTML = [
+          `<strong>단어 :</strong> ${word}`,
+          '',
+          '<strong>한글 :</strong> -',
+          '',
+          '<strong>영영 사전 :</strong> -',
+          '',
+          '<strong>예문 :</strong> -'
+        ].join('<br>');
+        el.detailBox.style.display = 'none';
+        return;
+      }
+
+      const info = DETAILS[key];
+      el.promptBox.innerHTML = [
+        `<strong>단어 :</strong> ${info.word || word}`,
+        '',
+        `<strong>한글 :</strong> ${info.ko || '-'}`,
+        '',
+        `<strong>영영 사전 :</strong> ${info.en || '-'}`,
+        '',
+        `<strong>예문 :</strong> ${info.ex || '-'}`
+      ].join('<br>');
+
+      el.detailBox.style.display = 'none';
+    }
+
+    function updateStats() {
+      el.totalCount.textContent = state.total;
+      el.correctCount.textContent = state.correct;
+      el.wrongCount.textContent = state.wrong;
+      const pct = state.total === 0 ? 0 : Math.round((state.correct / state.total) * 100);
+      el.accuracy.textContent = `${pct}%`;
+    }
+
+    function renderHistory() {
+      if (state.history.length === 0) {
+        el.historyList.innerHTML = '<div class="muted">아직 기록이 없습니다.</div>';
+        return;
+      }
+
+      el.historyList.innerHTML = state.history
+        .slice()
+        .reverse()
+        .map(item => `
+          <div class="historyItem">
+            <div><strong>${item.ok ? '정답' : '오답'}</strong> · <span class="muted">${item.levelLabel}</span></div>
+            <div>문제 ${item.questionNumber}</div>
+            <div>단어: <strong>${item.word}</strong></div>
+            <div>입력: ${item.answer || '<span class="muted">(빈칸)</span>'}</div>
+          </div>
+        `)
+        .join('');
+    }
+
     function renderPrompt() {
       if (!state.started) {
-        if (state.reviewMode && state.reviewWrongWords.length > 0) {
+        if (state.loadedSnapshotFileName) {
+          el.promptBox.textContent = '저장된 진행 상태를 불러왔습니다.\n시작하기를 누르면 이어서 진행합니다.';
+        } else if (state.reviewMode && state.reviewWrongWords.length > 0) {
           el.promptBox.textContent = `불러온 오답 단어 ${state.reviewWrongWords.length}개로 연습할 준비가 되었습니다.\n시작하기를 누르면 오답 단어만 다시 물어봅니다.`;
         } else {
           el.promptBox.textContent = '시작하기를 누르면 첫 문제를 냅니다.';
@@ -892,12 +1392,21 @@
         return;
       }
 
+      if (state.awaitingNext) {
+        el.promptBox.textContent = [
+          `문제 ${state.currentQuestionNumber}`,
+          '',
+          '정답 확인이 끝났습니다.',
+          '"다음 문제"를 누르면 이어서 진행합니다.'
+        ].join('\n');
+        updateProgressNote();
+        return;
+      }
+
       const prompt = [
         `문제 ${state.currentQuestionNumber}`,
         '',
-        '진행자:',
-        '',
-        'Your word is ready.',
+        '진행자: Your word is ready.',
         '',
         '단어를 들은 뒤 철자를 입력하고 제출하세요.',
         '필요하면 “다시 읽기”를 눌러 다시 들을 수 있습니다.'
@@ -908,12 +1417,18 @@
     }
 
     function updateControls() {
-      el.nextBtn.textContent = state.started ? '진행 중' : '시작하기';
+      if (!state.started && state.total > 0 && state.loadedSnapshotFileName) {
+        el.nextBtn.textContent = '이어하기';
+      } else {
+        el.nextBtn.textContent = state.started ? '진행 중' : '시작하기';
+      }
+
       el.nextBtn.disabled = state.started;
       el.noRepeatCheck.disabled = state.started;
       el.noRepeatWrap.classList.toggle('isLocked', state.started);
       el.practiceOptions.style.display = state.started ? 'none' : 'block';
       if (el.reviewLoaderSection) el.reviewLoaderSection.style.display = state.started ? 'none' : 'block';
+      if (el.loadModeSelect) el.loadModeSelect.disabled = state.started;
       if (el.historyFileInput) el.historyFileInput.disabled = state.started;
       el.answerInput.disabled = !state.awaitingAnswer;
       el.checkBtn.disabled = !state.awaitingAnswer;
@@ -926,38 +1441,33 @@
     function askNewWord(questionNumber = null, announceNumber = false) {
       clearTimeout(state.autoNextTimer);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
       state.started = true;
       state.currentQuestionNumber = questionNumber ?? (state.total + 1);
       state.currentWord = pickRandomWord();
+      state.lastResult = null;
+
       if (!state.currentWord) {
         state.started = false;
         state.awaitingAnswer = false;
         state.awaitingNext = false;
         el.promptBox.textContent = '연습할 단어가 없습니다.';
+        hideResultAndDetails();
         updateControls();
         return;
       }
+
       const usedSet = state.usedWordsByScope[getPoolKey()] || new Set();
-      state.currentWordOrder = el.noRepeatCheck.checked ? usedSet.size : 0;
+      state.currentWordOrder = el.noRepeatCheck.checked ? usedSet.size : state.total + 1;
       state.awaitingAnswer = true;
       state.awaitingNext = false;
       el.answerInput.value = '';
-      el.answerInput.focus();
-      el.resultBox.style.display = 'none';
-      el.detailBox.style.display = 'none';
+      focusAnswerInput();
+      hideResultAndDetails();
       renderPrompt();
       updateControls();
 
       speakWordPrompt(state.currentWord, announceNumber ? state.currentQuestionNumber : null);
-    }
-
-    function showResult(ok, answerText) {
-      el.resultBox.style.display = 'block';
-      el.resultBox.className = `result ${ok ? 'good' : 'bad'}`;
-      el.resultBox.innerHTML = ok
-        ? `정답!<span class="resultSub">${state.currentWord}</span>`
-        : `오답<span class="resultSub">정답: ${getAcceptedForms(state.currentWord).join(' / ')}<br>입력: ${answerText || '(빈칸)'}</span>`;
-      renderAnswerLabels(state.currentWord);
     }
 
     function moveToNextQuestion() {
@@ -986,14 +1496,25 @@
         word: state.currentWord,
         answer: raw,
         ok,
-        levelLabel: currentPracticeLabel()
+        levelLabel: currentPracticeLabel(),
+        scopeKey: getPoolKey()
       });
+
+      state.lastResult = {
+        ok,
+        word: state.currentWord,
+        answer: raw
+      };
 
       showResult(ok, raw);
       playTone(ok);
       updateStats();
       renderHistory();
+      renderPrompt();
       updateControls();
+      if (state.awaitingNext) {
+        el.advanceBtn.focus();
+      }
 
       speak(ok ? 'Correct answer.' : 'Incorrect answer.', 0.82);
       setTimeout(() => {
@@ -1001,17 +1522,20 @@
       }, 500);
     }
 
-
-
     el.historyFileInput.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file || state.started) return;
-      await loadWrongWordsFromFile(file);
+      await loadSessionOrWrongWordsFromFile(file);
     });
 
     el.clearReviewBtn.addEventListener('click', () => {
       if (state.started) return;
-      clearReviewMode();
+      clearLoadedPracticeFile();
+    });
+
+    el.loadModeSelect.addEventListener('change', () => {
+      if (state.started || !loadedFileCache.text) return;
+      applyLoadedText(loadedFileCache.text, loadedFileCache.name);
     });
 
     el.levelSelect.addEventListener('change', (e) => {
@@ -1027,7 +1551,7 @@
     });
 
     el.nextBtn.addEventListener('click', () => {
-      if (!state.started) askNewWord(1, true);
+      if (!state.started) askNewWord(state.total + 1, true);
     });
 
     el.speakBtn.addEventListener('click', () => {
@@ -1038,19 +1562,36 @@
     el.saveHistoryBtn.addEventListener('click', saveHistoryAsText);
 
     el.checkBtn.addEventListener('click', checkAnswer);
+
     el.advanceBtn.addEventListener('click', () => {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       moveToNextQuestion();
     });
 
-    el.answerInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && state.awaitingAnswer) checkAnswer();
-    });
+    function handlePracticeEnterKey(e) {
+      if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+      if (!state.started) return;
+
+      if (state.awaitingAnswer) {
+        e.preventDefault();
+        checkAnswer();
+        return;
+      }
+
+      if (state.awaitingNext) {
+        e.preventDefault();
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        moveToNextQuestion();
+      }
+    }
+
+    document.addEventListener('keydown', handlePracticeEnterKey);
 
     updateStats();
     renderHistory();
     renderPrompt();
     updateControls();
+
   </script>
 </body>
 </html>
