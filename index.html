@@ -114,6 +114,17 @@
       color: #111827;
     }
 
+    #checkBtn {
+      background: #16a34a;
+      color: white;
+    }
+
+    #checkBtn:disabled {
+      background: #16a34a;
+      color: white;
+      opacity: 0.55;
+    }
+
     .danger {
       background: #fee2e2;
       color: #991b1b;
@@ -320,33 +331,33 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="pill">Version 27</div>
+      <div class="pill">Version 40</div>
       <h1>Spelling Bee Practice</h1>
     </section>
 
     <div class="grid">
       <section class="card">
-        <h2 style="margin-top:0;">연습 진행</h2>
+        <h2 style="margin-top:0;">Practice</h2>
 
         <div id="reviewLoaderSection">
-          <label for="loadModeSelect">불러오기 방식</label>
+          <label for="loadModeSelect">Load mode</label>
           <select id="loadModeSelect">
-            <option value="resume">저장 시점 그대로 이어하기</option>
-            <option value="wrongOnly">오답 단어만 복습하기</option>
+            <option value="resume">Resume saved session</option>
+            <option value="wrongOnly">Review wrong words only</option>
           </select>
           
-          <label for="historyFileInput">최근 기록 TXT 불러오기</label>
+          <label for="historyFileInput">Load recent history TXT</label>
           <div class="fileRow">
             <input id="historyFileInput" type="file" accept=".txt,text/plain" />
-            <button id="clearReviewBtn" class="ghost" type="button">불러오기 해제</button>
+            <button id="clearReviewBtn" class="ghost" type="button">Clear loaded file</button>
           </div>
           <div id="reviewStatus" class="statusLine" style="display:none;"></div>
         </div>
 
         <div id="practiceOptions">
-          <label for="levelSelect">범위 선택</label>
+          <label for="levelSelect">Word range</label>
           <select id="levelSelect">
-            <option value="all">전체 단어</option>
+            <option value="all">All words</option>
             <option value="one">One Bee</option>
             <option value="two">Two Bee</option>
             <option value="three">Three Bee</option>
@@ -354,53 +365,54 @@
 
           <div id="noRepeatWrap" class="checkline">
             <input id="noRepeatCheck" type="checkbox" checked />
-            <label for="noRepeatCheck">같은 단어 다시 나오지 않기</label>
+            <label for="noRepeatCheck">Do not repeat words</label>
           </div>
         </div>
 
         <div id="progressNote" class="progressNote"></div>
 
-        <label for="answerInput">철자 입력</label>
-        <input id="answerInput" type="text" placeholder="예: beautiful" autocomplete="off" />
+        <label for="answerInput">Spelling input</label>
+        <input id="answerInput" type="text" placeholder="" autocomplete="off" />
+
 
         <div class="row">
-          <button id="nextBtn" class="primary">시작하기</button>
-          <button id="speakBtn" class="secondary">다시 읽기</button>
-          <button id="checkBtn" class="ghost">제출하기</button>
-          <button id="advanceBtn" class="primary">다음 문제</button>
+          <button id="nextBtn" class="primary">Start</button>
+          <button id="speakBtn" class="secondary">Read again</button>
+          <button id="checkBtn" class="ghost">Submit</button>
+          <button id="advanceBtn" class="primary">Next word</button>
         </div>
 
-        <div id="promptBox" class="promptBox">시작하기를 누르면 첫 문제를 냅니다.</div>
+        <div id="promptBox" class="promptBox">Press Start to begin the first word.</div>
         <div id="resultBox" class="result"></div>
         <div id="detailBox" class="detailBox"></div>
       </section>
 
       <aside class="card">
-        <h2 style="margin-top:0;">점수판</h2>
+        <h2 style="margin-top:0;">Scoreboard</h2>
         <div class="stats">
           <div class="stat">
-            <div class="k">총 문제</div>
+            <div class="k">Total</div>
             <div id="totalCount" class="v">0</div>
           </div>
           <div class="stat">
-            <div class="k">정답</div>
+            <div class="k">Correct</div>
             <div id="correctCount" class="v">0</div>
           </div>
           <div class="stat">
-            <div class="k">오답</div>
+            <div class="k">Wrong</div>
             <div id="wrongCount" class="v">0</div>
           </div>
           <div class="stat">
-            <div class="k">정답률</div>
+            <div class="k">Accuracy</div>
             <div id="accuracy" class="v">0%</div>
           </div>
         </div>
 
         <div class="history">
-          <div style="font-weight:800; margin-bottom:8px;">최근 기록</div>
-          <div id="historyList" class="muted">아직 기록이 없습니다.</div>
+          <div style="font-weight:800; margin-bottom:8px;">Recent history</div>
+          <div id="historyList" class="muted">No history yet.</div>
           <div class="historyActions">
-            <button id="saveHistoryBtn" class="ghost">최근 기록 TXT 저장</button>
+            <button id="saveHistoryBtn" class="ghost">Save recent history TXT</button>
           </div>
         </div>
 
@@ -436,6 +448,7 @@
       currentQuestionNumber: 0,
       currentWordOrder: 0,
       awaitingNext: false,
+      explanationLocked: false,
       reviewMode: false,
       reviewWrongWords: [],
       reviewSourceName: '',
@@ -446,6 +459,7 @@
       loadedFileMode: '',
       usedWordsByScope: createEmptyUsedWordsByScope()
     };
+
 
     const loadedFileCache = {
       text: '',
@@ -557,11 +571,11 @@
     }
 
     function levelLabel(value) {
-      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : '전체';
+      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : 'All Words';
     }
 
     function currentPracticeLabel() {
-      return state.reviewMode ? '오답 복습' : levelLabel(state.currentLevel);
+      return state.reviewMode ? 'Wrong Words Review' : levelLabel(state.currentLevel);
     }
 
     function getPoolWordsForScope(scopeKey, options = {}) {
@@ -655,10 +669,19 @@
       return Math.max(900, words * (rate < 0.8 ? 520 : 380));
     }
 
+    let activeSpeechSequenceToken = 0;
+
+    function cancelSpeechPlayback() {
+      activeSpeechSequenceToken += 1;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
     function speak(text, rate = 0.9, cancelPrevious = true) {
       const estimated = estimateSpeechMs(text, rate);
       if (!('speechSynthesis' in window)) return estimated;
-      if (cancelPrevious) window.speechSynthesis.cancel();
+      if (cancelPrevious) cancelSpeechPlayback();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'en-US';
       utter.rate = rate;
@@ -666,6 +689,135 @@
       utter.volume = 1;
       window.speechSynthesis.speak(utter);
       return estimated;
+    }
+
+    function speakWithOptions(text, options = {}) {
+      const rate = typeof options.rate === 'number' ? options.rate : 0.9;
+      const lang = options.lang || 'en-US';
+      const cancelPrevious = Boolean(options.cancelPrevious);
+      const estimated = estimateSpeechMs(text, rate);
+
+      if (!('speechSynthesis' in window)) {
+        if (typeof options.onend === 'function') {
+          setTimeout(() => options.onend(), estimated);
+        }
+        return estimated;
+      }
+
+      if (cancelPrevious) cancelSpeechPlayback();
+
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = lang;
+      utter.rate = rate;
+      utter.pitch = 1;
+      utter.volume = 1;
+
+      if (typeof options.onend === 'function') {
+        utter.onend = () => options.onend();
+        utter.onerror = () => options.onend();
+      }
+
+      window.speechSynthesis.speak(utter);
+      return estimated;
+    }
+
+    function speakSequence(items, onDone = null) {
+      const queue = Array.isArray(items) ? items.filter(item => item && item.text) : [];
+      if (queue.length === 0) {
+        if (typeof onDone === 'function') onDone();
+        return 0;
+      }
+
+      const sequenceToken = activeSpeechSequenceToken + 1;
+      activeSpeechSequenceToken = sequenceToken;
+
+      if (!('speechSynthesis' in window)) {
+        const total = queue.reduce((sum, item) => sum + estimateSpeechMs(item.text, item.rate || 0.9), 0);
+        if (typeof onDone === 'function') {
+          setTimeout(() => {
+            if (sequenceToken === activeSpeechSequenceToken) onDone();
+          }, total);
+        }
+        return total;
+      }
+
+      window.speechSynthesis.cancel();
+      let total = 0;
+
+      const run = (index) => {
+        if (sequenceToken !== activeSpeechSequenceToken) return;
+
+        if (index >= queue.length) {
+          if (typeof onDone === 'function') onDone();
+          return;
+        }
+
+        const item = queue[index];
+        total += speakWithOptions(item.text, {
+          lang: item.lang || 'en-US',
+          rate: item.rate || 0.9,
+          cancelPrevious: false,
+          onend: () => {
+            if (sequenceToken !== activeSpeechSequenceToken) return;
+            run(index + 1);
+          }
+        });
+      };
+
+      run(0);
+      return total;
+    }
+
+    function getAnswerInfo(word) {
+      const key = getDetailKeyForWord(word);
+      const info = key && DETAILS[key] ? DETAILS[key] : null;
+      return {
+        word: (info && info.word) || word || '-',
+        ko: (info && info.ko) || '-',
+        en: (info && info.en) || '-',
+        ex: (info && info.ex) || '-'
+      };
+    }
+
+    function speakAnswerInfo(word, ok) {
+      const info = getAnswerInfo(word);
+      const items = [
+        {
+          text: ok ? `Correct. Word: ${getWordToSpeak(info.word)}.` : `Incorrect. The correct word is ${getWordToSpeak(info.word)}.`,
+          lang: 'en-US',
+          rate: 0.86
+        },
+        {
+          text: `Spelling: ${spellOutWord(info.word)}.`,
+          lang: 'en-US',
+          rate: 0.82
+        },
+        {
+          text: `${info.ko}.`,
+          lang: 'ko-KR',
+          rate: 0.9
+        },
+        {
+          text: `English definition: ${info.en}.`,
+          lang: 'en-US',
+          rate: 0.9
+        },
+        {
+          text: `Example sentence: ${info.ex}.`,
+          lang: 'en-US',
+          rate: 0.9
+        }
+      ];
+
+      speakSequence(items, () => {
+        if (state.awaitingNext && state.lastResult && state.lastResult.word === word && state.explanationLocked) {
+          state.explanationLocked = false;
+          updateControls();
+          if (state.awaitingNext && !el.advanceBtn.disabled) {
+            el.advanceBtn.focus();
+          }
+        }
+      });
     }
 
     function playTone(ok) {
@@ -703,12 +855,42 @@
     }
 
     function spellOutWord(word) {
-      const chars = Array.from(word);
+      const letterNames = {
+        'á': 'a with acute',
+        'à': 'a with grave',
+        'â': 'a with circumflex',
+        'ä': 'a with umlaut',
+        'ã': 'a with tilde',
+        'å': 'a with ring',
+        'é': 'e with acute',
+        'è': 'e with grave',
+        'ê': 'e with circumflex',
+        'ë': 'e with umlaut',
+        'í': 'i with acute',
+        'ì': 'i with grave',
+        'î': 'i with circumflex',
+        'ï': 'i with umlaut',
+        'ó': 'o with acute',
+        'ò': 'o with grave',
+        'ô': 'o with circumflex',
+        'ö': 'o with umlaut',
+        'õ': 'o with tilde',
+        'ú': 'u with acute',
+        'ù': 'u with grave',
+        'û': 'u with circumflex',
+        'ü': 'u with umlaut',
+        'ñ': 'n with tilde',
+        'ç': 'c with cedilla'
+      };
+
+      const chars = Array.from(String(word || ''));
       const spoken = chars.map(ch => {
+        const lower = ch.toLowerCase();
         if (ch === ' ') return 'space';
         if (ch === "'") return 'apostrophe';
         if (ch === '-') return 'hyphen';
-        return ch;
+        if (letterNames[lower]) return letterNames[lower];
+        return lower;
       });
       return spoken.join(', ');
     }
@@ -736,12 +918,12 @@
             ? 'two'
             : item.levelLabel === 'Three Bee'
               ? 'three'
-              : item.levelLabel === '오답 복습'
+              : item.levelLabel === '오답 복습' || item.levelLabel === 'Wrong Words Review'
                 ? 'review'
                 : 'all'
       );
 
-      const levelLabelText = item.levelLabel || (scopeKey === 'review' ? '오답 복습' : levelLabel(scopeKey));
+      const levelLabelText = scopeKey === 'review' ? 'Wrong Words Review' : levelLabel(scopeKey);
 
       return {
         questionNumber: safeNumber(item.questionNumber, 0),
@@ -781,7 +963,7 @@
     function createSessionSnapshot() {
       return {
         format: 'spelling-bee-session',
-        version: 27,
+        version: 30,
         savedAt: new Date().toISOString(),
         state: {
           currentWord: state.currentWord,
@@ -818,7 +1000,7 @@
       if (!snapshotState.noRepeatChecked) {
         if (!snapshotState.started && safeNumber(snapshotState.total, 0) === 0) return null;
         return {
-          label: '진행한 문제 수',
+          label: 'Questions completed',
           count: safeNumber(snapshotState.total, 0),
           totalWords: null
         };
@@ -843,7 +1025,7 @@
       if (!snapshotState.started && count === 0 && safeNumber(snapshotState.total, 0) === 0) return null;
 
       return {
-        label: '진행한 단어 수',
+        label: 'Words completed',
         count,
         totalWords
       };
@@ -857,7 +1039,7 @@
       const lines = [
         'Spelling Bee Practice Recent History',
         `Saved at: ${new Date(snapshot.savedAt).toLocaleString()}`,
-        `Range: ${savedState.reviewMode ? '오답 복습' : levelLabel(savedState.currentLevel)}`,
+        `Range: ${savedState.reviewMode ? 'Wrong Words Review' : levelLabel(savedState.currentLevel)}`,
         `No-repeat option: ${savedState.noRepeatChecked ? 'ON' : 'OFF'}`
       ];
 
@@ -973,10 +1155,20 @@
       }, 0);
     }
 
+    function moveCaretToAnswerEnd() {
+      try {
+        const end = el.answerInput.value.length;
+        el.answerInput.focus();
+        el.answerInput.setSelectionRange(end, end);
+      } catch (error) {
+      }
+    }
+
+
     function resetPracticeState(options = {}) {
       const preserveFileInput = Boolean(options.preserveFileInput);
       clearTimeout(state.autoNextTimer);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      cancelSpeechPlayback();
 
       state.currentWord = null;
       state.currentLevel = 'all';
@@ -990,6 +1182,7 @@
       state.currentQuestionNumber = 0;
       state.currentWordOrder = 0;
       state.awaitingNext = false;
+      state.explanationLocked = false;
       state.reviewMode = false;
       state.reviewWrongWords = [];
       state.reviewSourceName = '';
@@ -1013,8 +1206,8 @@
       el.resultBox.style.display = 'block';
       el.resultBox.className = `result ${ok ? 'good' : 'bad'}`;
       el.resultBox.innerHTML = ok
-        ? `정답!<span class="resultSub">${displayWord}</span>`
-        : `오답<span class="resultSub">정답: ${getAcceptedForms(displayWord).join(' / ')}<br>입력: ${answerText || '(빈칸)'}</span>`;
+        ? `Correct!<span class="resultSub">${displayWord}</span>`
+        : `Incorrect<span class="resultSub">Correct answer: ${getAcceptedForms(displayWord).join(' / ')}<br>Your input: ${answerText || '(blank)'}</span>`;
       renderAnswerLabels(displayWord);
     }
 
@@ -1087,7 +1280,7 @@
       resetPracticeState({ preserveFileInput: true });
 
       if (wrongWords.length === 0) {
-        state.reviewStatusMessage = '이 TXT 안에서 오답 단어를 찾지 못했습니다.';
+        state.reviewStatusMessage = 'No wrong-answer words were found in this TXT file.';
         updateStats();
         renderHistory();
         renderPrompt();
@@ -1117,7 +1310,7 @@
         }
 
         resetPracticeState({ preserveFileInput: true });
-        state.reviewStatusMessage = '이 파일에는 이어하기용 세션 정보가 없습니다. 불러오기 방식을 “오답 단어만 복습하기”로 바꾸면 사용할 수 있습니다.';
+        state.reviewStatusMessage = 'This file does not contain resume-session data. Switch the load mode to “Review wrong words only” to use it.';
         updateStats();
         renderHistory();
         renderPrompt();
@@ -1222,7 +1415,7 @@
         applyLoadedText(text, file.name);
       } catch (error) {
         resetPracticeState({ preserveFileInput: true });
-        state.reviewStatusMessage = 'TXT 파일을 읽는 중 문제가 발생했습니다.';
+        state.reviewStatusMessage = 'There was a problem reading the TXT file.';
         updateStats();
         renderHistory();
         renderPrompt();
@@ -1250,10 +1443,10 @@
         const savedAtText = state.loadedSnapshotSavedAt
           ? new Date(state.loadedSnapshotSavedAt).toLocaleString()
           : '';
-        message = `불러온 파일: ${state.loadedSnapshotFileName} · 이어하기 모드`;
-        if (savedAtText) message += ` · 저장 시각 ${savedAtText}`;
+        message = `Loaded file: ${state.loadedSnapshotFileName} · Resume mode`;
+        if (savedAtText) message += ` · Saved at ${savedAtText}`;
       } else if (state.reviewMode && state.reviewWrongWords.length > 0) {
-        message = `불러온 파일: ${state.reviewSourceName} · 오답 복습 모드 · 오답 단어 ${state.reviewWrongWords.length}개`;
+        message = `Loaded file: ${state.reviewSourceName} · Wrong-words review mode · ${state.reviewWrongWords.length} wrong words`;
       } else if (state.reviewStatusMessage) {
         message = state.reviewStatusMessage;
       }
@@ -1262,7 +1455,7 @@
       el.reviewStatus.style.display = message ? 'block' : 'none';
 
       if (el.clearReviewBtn) {
-        el.clearReviewBtn.textContent = '불러오기 해제';
+        el.clearReviewBtn.textContent = 'Clear loaded file';
         el.clearReviewBtn.disabled = state.started || (!loadedFileCache.text && !state.loadedSnapshotFileName && !state.reviewMode && !state.reviewStatusMessage);
       }
     }
@@ -1287,7 +1480,7 @@
         }
 
         return {
-          text: `진행한 단어 수: ${completedCount} / ${totalWords}`
+          text: `Words completed: ${completedCount} / ${totalWords}`
         };
       }
 
@@ -1296,7 +1489,7 @@
       }
 
       return {
-        text: `진행한 문제 수: ${state.total}`
+        text: `Questions completed: ${state.total}`
       };
     }
 
@@ -1316,30 +1509,15 @@
       el.detailBox.innerHTML = '';
       el.detailBox.style.display = 'none';
 
-      const key = getDetailKeyForWord(word);
-      if (!key || !DETAILS[key]) {
-        el.promptBox.innerHTML = [
-          `<strong>단어 :</strong> ${word}`,
-          '',
-          '<strong>한글 :</strong> -',
-          '',
-          '<strong>영영 사전 :</strong> -',
-          '',
-          '<strong>예문 :</strong> -'
-        ].join('<br>');
-        el.detailBox.style.display = 'none';
-        return;
-      }
-
-      const info = DETAILS[key];
+      const info = getAnswerInfo(word);
       el.promptBox.innerHTML = [
-        `<strong>단어 :</strong> ${info.word || word}`,
+        `<strong>Word:</strong> ${info.word}`,
         '',
-        `<strong>한글 :</strong> ${info.ko || '-'}`,
+        `<strong>Korean:</strong> ${info.ko}`,
         '',
-        `<strong>영영 사전 :</strong> ${info.en || '-'}`,
+        `<strong>English definition:</strong> ${info.en}`,
         '',
-        `<strong>예문 :</strong> ${info.ex || '-'}`
+        `<strong>Example sentence:</strong> ${info.ex}`
       ].join('<br>');
 
       el.detailBox.style.display = 'none';
@@ -1355,7 +1533,7 @@
 
     function renderHistory() {
       if (state.history.length === 0) {
-        el.historyList.innerHTML = '<div class="muted">아직 기록이 없습니다.</div>';
+        el.historyList.innerHTML = '<div class="muted">No history yet.</div>';
         return;
       }
 
@@ -1364,10 +1542,10 @@
         .reverse()
         .map(item => `
           <div class="historyItem">
-            <div><strong>${item.ok ? '정답' : '오답'}</strong> · <span class="muted">${item.levelLabel}</span></div>
-            <div>문제 ${item.questionNumber}</div>
-            <div>단어: <strong>${item.word}</strong></div>
-            <div>입력: ${item.answer || '<span class="muted">(빈칸)</span>'}</div>
+            <div><strong>${item.ok ? 'Correct' : 'Wrong'}</strong> · <span class="muted">${item.levelLabel}</span></div>
+            <div>Question ${item.questionNumber}</div>
+            <div>Word: <strong>${item.word}</strong></div>
+            <div>Your input: ${item.answer || '<span class="muted">(blank)</span>'}</div>
           </div>
         `)
         .join('');
@@ -1376,40 +1554,32 @@
     function renderPrompt() {
       if (!state.started) {
         if (state.loadedSnapshotFileName) {
-          el.promptBox.textContent = '저장된 진행 상태를 불러왔습니다.\n시작하기를 누르면 이어서 진행합니다.';
+          el.promptBox.textContent = 'Saved progress has been loaded.\nPress Start to continue.';
         } else if (state.reviewMode && state.reviewWrongWords.length > 0) {
-          el.promptBox.textContent = `불러온 오답 단어 ${state.reviewWrongWords.length}개로 연습할 준비가 되었습니다.\n시작하기를 누르면 오답 단어만 다시 물어봅니다.`;
+          el.promptBox.textContent = `Ready to practice ${state.reviewWrongWords.length} loaded wrong-answer words.\nPress Start to review only the wrong words.`;
         } else {
-          el.promptBox.textContent = '시작하기를 누르면 첫 문제를 냅니다.';
+          el.promptBox.textContent = 'Press Start to begin the first word.';
         }
         updateProgressNote();
         return;
       }
 
       if (!state.currentWord) {
-        el.promptBox.textContent = `현재 범위: ${currentPracticeLabel()}\n다음 문제를 준비하고 있습니다.`;
+        el.promptBox.textContent = `Current range: ${currentPracticeLabel()}\nPreparing the next word.`;
         updateProgressNote();
         return;
       }
 
       if (state.awaitingNext) {
-        el.promptBox.textContent = [
-          `문제 ${state.currentQuestionNumber}`,
-          '',
-          '정답 확인이 끝났습니다.',
-          '"다음 문제"를 누르면 이어서 진행합니다.'
-        ].join('\n');
+        renderAnswerLabels(state.lastResult && state.lastResult.word ? state.lastResult.word : state.currentWord);
         updateProgressNote();
         return;
       }
 
       const prompt = [
-        `문제 ${state.currentQuestionNumber}`,
+        `Question ${state.currentQuestionNumber}`,
         '',
-        '진행자: Your word is ready.',
-        '',
-        '단어를 들은 뒤 철자를 입력하고 제출하세요.',
-        '필요하면 “다시 읽기”를 눌러 다시 들을 수 있습니다.'
+        'Host: Your word is ready.'
       ].join('\n');
 
       el.promptBox.textContent = prompt;
@@ -1418,9 +1588,9 @@
 
     function updateControls() {
       if (!state.started && state.total > 0 && state.loadedSnapshotFileName) {
-        el.nextBtn.textContent = '이어하기';
+        el.nextBtn.textContent = 'Resume';
       } else {
-        el.nextBtn.textContent = state.started ? '진행 중' : '시작하기';
+        el.nextBtn.textContent = state.started ? 'In progress' : 'Start';
       }
 
       el.nextBtn.disabled = state.started;
@@ -1432,26 +1602,27 @@
       if (el.historyFileInput) el.historyFileInput.disabled = state.started;
       el.answerInput.disabled = !state.awaitingAnswer;
       el.checkBtn.disabled = !state.awaitingAnswer;
-      el.advanceBtn.disabled = !state.awaitingNext;
-      el.speakBtn.disabled = !state.currentWord;
+      el.advanceBtn.disabled = !state.awaitingNext || state.explanationLocked;
+      el.speakBtn.disabled = !state.currentWord || (state.awaitingNext && state.explanationLocked);
       updateReviewStatus();
       updateProgressNote();
     }
 
     function askNewWord(questionNumber = null, announceNumber = false) {
       clearTimeout(state.autoNextTimer);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      cancelSpeechPlayback();
 
       state.started = true;
       state.currentQuestionNumber = questionNumber ?? (state.total + 1);
       state.currentWord = pickRandomWord();
       state.lastResult = null;
+      state.explanationLocked = false;
 
       if (!state.currentWord) {
         state.started = false;
         state.awaitingAnswer = false;
         state.awaitingNext = false;
-        el.promptBox.textContent = '연습할 단어가 없습니다.';
+        el.promptBox.textContent = 'No words available for practice.';
         hideResultAndDetails();
         updateControls();
         return;
@@ -1478,15 +1649,17 @@
     function checkAnswer() {
       if (!state.currentWord || !state.awaitingAnswer) return;
 
+      cancelSpeechPlayback();
+
       const raw = el.answerInput.value;
       const normalized = normalizeForCompare(raw);
       const acceptedForms = getAcceptedForms(state.currentWord);
       const accepted = acceptedForms.map(normalizeForCompare);
       const ok = accepted.includes(normalized);
-      const wordToSpell = ok ? state.currentWord : acceptedForms[0];
 
       state.awaitingAnswer = false;
       state.awaitingNext = true;
+      state.explanationLocked = !ok;
       state.total += 1;
       if (ok) state.correct += 1;
       else state.wrong += 1;
@@ -1512,14 +1685,12 @@
       renderHistory();
       renderPrompt();
       updateControls();
-      if (state.awaitingNext) {
+
+      if (state.awaitingNext && !state.explanationLocked) {
         el.advanceBtn.focus();
       }
 
-      speak(ok ? 'Correct answer.' : 'Incorrect answer.', 0.82);
-      setTimeout(() => {
-        speak(`The spelling is: ${spellOutWord(wordToSpell)}.`, 0.68);
-      }, 500);
+      speakAnswerInfo(state.currentWord, ok);
     }
 
     el.historyFileInput.addEventListener('change', async (e) => {
@@ -1556,15 +1727,18 @@
 
     el.speakBtn.addEventListener('click', () => {
       if (!state.currentWord) return;
+      if (state.awaitingNext && state.explanationLocked) return;
       speakWordPrompt(state.currentWord, null);
     });
 
     el.saveHistoryBtn.addEventListener('click', saveHistoryAsText);
 
+
     el.checkBtn.addEventListener('click', checkAnswer);
 
     el.advanceBtn.addEventListener('click', () => {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if (state.explanationLocked) return;
+      cancelSpeechPlayback();
       moveToNextQuestion();
     });
 
@@ -1578,14 +1752,15 @@
         return;
       }
 
-      if (state.awaitingNext) {
+      if (state.awaitingNext && !state.explanationLocked) {
         e.preventDefault();
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        cancelSpeechPlayback();
         moveToNextQuestion();
       }
     }
 
     document.addEventListener('keydown', handlePracticeEnterKey);
+
 
     updateStats();
     renderHistory();
