@@ -42,9 +42,16 @@
     }
 
     h1 {
-      margin: 0 0 8px;
+      margin: 0;
       font-size: clamp(28px, 4vw, 42px);
       line-height: 1.1;
+    }
+
+    .heroTitle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
 
     .grid {
@@ -152,6 +159,133 @@
       height: 18px;
       accent-color: #dc2626;
       margin: 0;
+    }
+
+    .inputLabelRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 14px 0 8px;
+    }
+
+    .inputLabelRow > label {
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .micInlineWrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .micInlineWrap input[type="checkbox"] {
+      width: 13px;
+      height: 13px;
+      accent-color: #dc2626;
+      margin: 0;
+    }
+
+    .historyHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .historyTitle {
+      font-weight: 800;
+    }
+
+    .historyHeader .ghost {
+      white-space: nowrap;
+      padding: 10px 14px;
+    }
+
+    .scoreboardHeader {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .scoreboardTitleWrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: default;
+    }
+
+    .scoreboardTitleWrap h2 {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .scoreboardTooltip {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      min-width: 280px;
+      max-width: min(360px, calc(100vw - 64px));
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(17, 24, 39, 0.97);
+      color: white;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: none;
+      z-index: 30;
+    }
+
+    .scoreboardTitleWrap:hover .scoreboardTooltip,
+    .scoreboardTitleWrap:focus-within .scoreboardTooltip {
+      display: block;
+    }
+
+    .scoreboardTooltipTitle {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #dbeafe;
+    }
+
+    .scoreboardTooltipHint {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .scoreboardTooltipRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+    }
+
+    .scoreboardTooltipRow:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .scoreboardTooltipRow span:last-child {
+      font-weight: 800;
+      white-space: nowrap;
     }
 
     .historyActions {
@@ -308,6 +442,55 @@
       line-height: 1.55;
     }
 
+    .historyStatusCorrect {
+      color: #2563eb;
+    }
+
+    .historyStatusWrong {
+      color: #dc2626;
+    }
+
+    .historyMetaRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+      align-items: center;
+    }
+
+    .historyQuestionRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .historyWordRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .historyWordText {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .historyTag {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid #e5e7eb;
+    }
+
     .muted { color: var(--muted); }
     .tiny { font-size: 12px; }
     .pill {
@@ -318,7 +501,8 @@
       color: #1d4ed8;
       font-size: 12px;
       font-weight: 700;
-      margin-bottom: 10px;
+      margin: 0 0 0 auto;
+      white-space: nowrap;
     }
 
     @media (max-width: 860px) {
@@ -331,8 +515,10 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="pill">Version 43</div>
-      <h1>Spelling Bee Practice</h1>
+      <div class="heroTitle">
+        <h1>Spelling Bee Practice</h1>
+        <div class="pill">Version 55</div>
+      </div>
     </section>
 
     <div class="grid">
@@ -357,10 +543,14 @@
         <div id="practiceOptions">
           <label for="levelSelect">Word range</label>
           <select id="levelSelect">
-            <option value="all">All words</option>
-            <option value="one">One Bee</option>
-            <option value="two">Two Bee</option>
-            <option value="three">Three Bee</option>
+            <option value="all">All words (450 words)</option>
+            <option value="grade3">3rd Grade (50 words)</option>
+            <option value="grade4">4th Grade (50 words)</option>
+            <option value="grade5">5th Grade (50 words)</option>
+            <option value="extra">Extra (300 words)</option>
+            <option value="one">One Bee (150 words)</option>
+            <option value="two">Two Bee (150 words)</option>
+            <option value="three">Three Bee (150 words)</option>
           </select>
 
           <div id="noRepeatWrap" class="checkline">
@@ -371,16 +561,17 @@
 
         <div id="progressNote" class="progressNote"></div>
 
-        <div id="micEnableWrap" class="checkline" style="margin-top: 18px;">
-          <input id="micEnableCheck" type="checkbox" />
-          <label for="micEnableCheck">Enable microphone</label>
-        </div>
-
         <div id="answerSection">
-          <label for="answerInput">
-            Spelling input 
-            <span id="micStatus" style="color:var(--good); font-size: 13px; margin-left: 8px;"></span>
-          </label>
+          <div class="inputLabelRow">
+            <label for="answerInput">
+              Spelling input 
+              <span id="micStatus" style="color:var(--good); font-size: 13px; margin-left: 8px;"></span>
+            </label>
+            <label id="micEnableWrap" class="micInlineWrap" for="micEnableCheck">
+              <input id="micEnableCheck" type="checkbox" />
+              <span>Enable microphone</span>
+            </label>
+          </div>
           <input id="answerInput" type="text" placeholder="" autocomplete="off" />
         </div>
 
@@ -397,7 +588,12 @@
       </section>
 
       <aside class="card">
-        <h2 style="margin-top:0;">Scoreboard</h2>
+        <div class="scoreboardHeader">
+          <div class="scoreboardTitleWrap" tabindex="0" aria-label="Scoreboard group progress">
+            <h2>Scoreboard</h2>
+            <div id="scoreboardTooltip" class="scoreboardTooltip"></div>
+          </div>
+        </div>
         <div class="stats">
           <div class="stat">
             <div class="k">Total</div>
@@ -418,11 +614,11 @@
         </div>
 
         <div class="history">
-          <div style="font-weight:800; margin-bottom:8px;">Recent history</div>
-          <div id="historyList" class="muted">No history yet.</div>
-          <div class="historyActions">
+          <div class="historyHeader">
+            <div class="historyTitle">Recent history</div>
             <button id="saveHistoryBtn" class="ghost">Save recent history TXT</button>
           </div>
+          <div id="historyList" class="muted">No history yet.</div>
         </div>
 
       </aside>
@@ -501,12 +697,51 @@
       correctCount: document.getElementById('correctCount'),
       wrongCount: document.getElementById('wrongCount'),
       accuracy: document.getElementById('accuracy'),
-      historyList: document.getElementById('historyList')
+      historyList: document.getElementById('historyList'),
+      scoreboardTooltip: document.getElementById('scoreboardTooltip')
     };
 
     // 음성 인식(Speech Recognition) 초기화
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
+    let micPermissionStream = null;
+
+    async function requestMicPermission() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+      if (micPermissionStream) return true;
+
+      try {
+        micPermissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micPermissionStream.getTracks().forEach(track => track.stop());
+        return true;
+      } catch (error) {
+        console.error('Microphone permission error', error);
+        return false;
+      }
+    }
+
+    function setMicStatus(text = '', color = 'var(--good)') {
+      el.micStatus.textContent = text;
+      el.micStatus.style.color = color;
+    }
+
+    function startRecognition(force = false) {
+      if (!recognition || !state.micEnabled) return;
+      if (!force && state.isListening) return;
+
+      try {
+        recognition.start();
+      } catch (error) {
+        if (error && error.name !== 'InvalidStateError') {
+          console.error('Speech recognition start error', error);
+        }
+      }
+    }
+
+    function stopRecognition() {
+      if (!recognition) return;
+      try { recognition.stop(); } catch (error) {}
+    }
 
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
@@ -516,11 +751,11 @@
 
       recognition.onstart = () => {
         state.isListening = true;
-        el.micStatus.textContent = '(Listening...)';
+        setMicStatus('(Listening...)');
       };
 
       recognition.onresult = (event) => {
-        if (!state.awaitingAnswer) return;
+        if (!state.awaitingAnswer || state.isSpeakingTTS) return;
 
         let newText = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -538,28 +773,39 @@
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        if (event.error === 'not-allowed') {
+
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           el.micEnableCheck.checked = false;
           state.micEnabled = false;
-          el.micStatus.textContent = '(Mic blocked)';
-          el.micStatus.style.color = 'var(--bad)';
+          setMicStatus('(Mic blocked)', 'var(--bad)');
+          stopRecognition();
+          return;
+        }
+
+        if (state.micEnabled) {
+          setMicStatus('(Mic ready)', 'var(--muted)');
         }
       };
 
       recognition.onend = () => {
         state.isListening = false;
-        el.micStatus.textContent = '';
-        // 사용자가 명시적으로 마이크를 껐거나, TTS가 말하는 중이 아니라면 자동 재시작
-        if (state.micEnabled && state.awaitingAnswer && !state.isSpeakingTTS) {
-          try { recognition.start(); } catch(e) {}
+
+        if (state.micEnabled) {
+          if (state.awaitingAnswer && !state.isSpeakingTTS) {
+            setMicStatus('(Mic ready)', 'var(--muted)');
+            startRecognition(true);
+          } else {
+            setMicStatus('(Mic on)', 'var(--muted)');
+          }
+        } else {
+          setMicStatus('');
         }
       };
     } else {
       // 미지원 브라우저 처리
       if (el.micEnableCheck) {
         el.micEnableCheck.disabled = true;
-        el.micStatus.textContent = '(Not supported in this browser)';
-        el.micStatus.style.color = 'var(--muted)';
+        setMicStatus('(Not supported in this browser)', 'var(--muted)');
       }
     }
 
@@ -621,12 +867,12 @@
 
     // 마이크 일시정지 / 재개 헬퍼
     function pauseMic() {
-      if (recognition && state.isListening) recognition.stop();
+      if (recognition && state.isListening) stopRecognition();
     }
 
-    function resumeMic() {
+    function resumeMic(force = false) {
       if (recognition && state.micEnabled && state.awaitingAnswer && !state.isSpeakingTTS) {
-        try { recognition.start(); } catch(e) {}
+        startRecognition(force);
       }
     }
 
@@ -660,6 +906,10 @@
     function createEmptyUsedWordsByScope() {
       return {
         all: new Set(),
+        grade3: new Set(),
+        grade4: new Set(),
+        grade5: new Set(),
+        extra: new Set(),
         one: new Set(),
         two: new Set(),
         three: new Set(),
@@ -686,6 +936,14 @@
       return word;
     }
 
+    const GRADE_WORDS = {
+      grade3: ["unicorn", "faraway", "heater", "pirates", "understand", "wooden", "leaning", "breakfast", "window", "acrobat", "message", "chocolate", "forepaw", "elephant", "hedgehog", "recipe", "garbage", "surprise", "mermaid", "bombarded", "disability", "incredible", "leather", "countess", "nervous", "peppercorn", "cartwheel", "raise", "weather", "zooming", "attacked", "turnout", "eaten", "streetlights", "journey", "courtyard", "shouting", "asleep", "curious", "dinosaur", "brilliant", "vacuum", "gorgeous", "monsoon", "dangerous", "avocado", "valentine", "February", "formation", "especially"],
+      grade4: ["hesitate", "scorcher", "scavenger", "fragments", "deflated", "unleash", "ration", "cosmetics", "crawdad", "frustration", "unruly", "mascot", "aroma", "moustache", "artifacts", "perfume", "sinister", "tuxedo", "discoveries", "lurches", "language", "prognosis", "Buffalo", "sequins", "gallop", "fabulous", "lanky", "fluently", "mysterious", "brandished", "sardines", "anguish", "conical", "rickety", "lilt", "pediatric", "porridge", "democracy", "rummage", "beige", "ancestral", "grimace", "gaunt", "enormous", "geranium", "nautical", "dubious", "ebony", "foreign", "paltry"],
+      grade5: ["verdict", "garbled", "encourages", "imitation", "miniature", "receptionist", "preamble", "plausible", "reprimanding", "commotion", "oblivion", "immigrants", "steeple", "spectators", "lanyards", "suspicious", "parchment", "ramshackle", "fugitive", "heron", "dissolving", "nomad", "billowed", "skewer", "Berlin", "lunacy", "conjure", "bracken", "noggin", "neon", "rakish", "hypnosis", "rotunda", "gusto", "toiletries", "gleaned", "jeered", "winsome", "prattling", "galore", "emporium", "atrium", "eccentric", "savant", "almanac", "hippies", "samosas", "campaign", "pistachio", "mosque"]
+    };
+
+    const EXTRA_WORDS = ["tag", "send", "deck", "stuck", "snug", "fish", "hold", "mind", "stay", "scrub", "draw", "brown", "cozy", "tint", "milk", "yawn", "tank", "want", "crowd", "pond", "skirt", "sharks", "quilt", "twigs", "taffy", "comfy", "stretch", "tight", "candy", "scrunch", "ruby", "close", "tackle", "wire", "skater", "giant", "bucket", "chance", "baskets", "tender", "paste", "melon", "farmer", "parent", "tail", "hockey", "slime", "insects", "teeth", "shortcut", "bait", "lure", "cluster", "forest", "hollow", "spinning", "baffling", "sizzling", "hoist", "search", "remind", "mango", "coral", "jangle", "shimmer", "blossoms", "swampy", "studded", "focus", "distress", "lessons", "moment", "ajar", "basil", "triple", "satin", "ahoy", "signal", "answer", "shuffle", "dollop", "minnows", "silver", "before", "circus", "writing", "kitchen", "sugar", "awkward", "seep", "sweet", "wheels", "faint", "fruit", "roam", "goats", "woozy", "limbs", "ahead", "señor", "zombielike", "warlock", "colossus", "convulsively", "dimensional", "garishly", "graffitist", "Everest", "dexterity", "cavorting", "marauder", "conscience", "battlements", "deferential", "albatross", "khaki", "opalescent", "asphalt", "Yiddish", "talcum", "tranquilizer", "equestrian", "plaited", "monsieur", "manticores", "prestigious", "fraidycat", "guttural", "lo mein", "courier", "sans serif", "psyche", "stucco", "Frankenstein", "schema", "et cetera", "vidimus", "delphine", "slough", "archipelago", "serape", "puissance", "pinioning", "chignon", "pheromone", "galleon", "magnanimous", "chartreuse", "wainscoting", "Nehru", "gangly", "swaggering", "chimneys", "riveted", "plaid", "dirge", "zeal", "whittled", "depots", "fiberglass", "salvaged", "fissures", "enthusiastic", "discipline", "unfamiliar", "scurrying", "dignitaries", "pizzeria", "dismissal", "skittish", "careened", "nomination", "opportunist", "dictatorship", "comrades", "sporadic", "promenade", "repugnant", "invincible", "renowned", "parachute", "laborious", "appointment", "foreseeable", "ratify", "scalpel", "reclusive", "compassionate", "bulletin", "alfalfa", "officially", "crematorium", "bayonet", "amicable", "exuberant", "beautician", "equations", "assignment", "ultimatum", "whinnying", "squalor", "memoirs", "cylinders", "ominous", "muffler", "syndrome", "premises", "safari", "lasagna", "substantially", "mercantile", "formidable", "propaganda", "marquee", "proficient", "compunction", "emphatically", "hyperventilated", "ostracism", "onslaught", "ruefully", "misanthrope", "prototype", "cravenly", "mulberry", "hypocritical", "chlorine", "traumatic", "receipts", "solemnly", "begrudge", "contentious", "precocious", "ensemble", "cadre", "lye", "belfry", "lacrosse", "sluice", "cajolery", "vigilance", "residuals", "boutique", "peroxide", "aristocracy", "apocalypse", "tuberculosis", "barricade", "confreres", "anonymously", "unparalleled", "barrette", "chassis", "junket", "quandary", "Erie", "gingham", "silhouette", "auxiliary", "thesaurus", "patriarchs", "chandelier", "dulce", "concierge", "latticework", "hibiscus", "tamale", "maracas", "gyroplane", "burpees", "Adriatic", "piccolo", "au revoir", "tulle", "boll weevil", "camphor", "Tucson", "paparazzi", "pumpernickel", "pogrom", "bursitis", "pâtisserie", "cycads", "sarsaparilla", "maître d'", "cannelloni", "boulangerie", "bronchitis", "Oswego", "diphtheria", "baklava", "corbels", "trebuchets", "Kilimanjaro", "fräulein", "protégé", "hors d'oeuvres", "maquisards", "Aubusson", "Charolais"];
+
     function buildKnownWordMap() {
       const map = new Map();
       [...WORDS.one, ...WORDS.two, ...WORDS.three].forEach(word => {
@@ -708,11 +966,83 @@
     }
 
     function levelLabel(value) {
-      return value === 'one' ? 'One Bee' : value === 'two' ? 'Two Bee' : value === 'three' ? 'Three Bee' : 'All Words';
+      return value === 'grade3'
+        ? '3rd Grade'
+        : value === 'grade4'
+          ? '4th Grade'
+          : value === 'grade5'
+            ? '5th Grade'
+            : value === 'extra'
+              ? 'Extra'
+              : value === 'one'
+                ? 'One Bee'
+                : value === 'two'
+                  ? 'Two Bee'
+                  : value === 'three'
+                    ? 'Three Bee'
+                    : 'All Words';
     }
 
     function currentPracticeLabel() {
       return state.reviewMode ? 'Wrong Words Review' : levelLabel(state.currentLevel);
+    }
+
+    const GRADE_WORD_SETS = {
+      grade3: new Set(GRADE_WORDS.grade3.map(word => normalizeForCompare(getPreferredWord(word)))),
+      grade4: new Set(GRADE_WORDS.grade4.map(word => normalizeForCompare(getPreferredWord(word)))),
+      grade5: new Set(GRADE_WORDS.grade5.map(word => normalizeForCompare(getPreferredWord(word))))
+    };
+
+    const BEE_WORD_SETS = {
+      one: new Set(WORDS.one.map(word => normalizeForCompare(getPreferredWord(word)))),
+      two: new Set(WORDS.two.map(word => normalizeForCompare(getPreferredWord(word)))),
+      three: new Set(WORDS.three.map(word => normalizeForCompare(getPreferredWord(word))))
+    };
+
+    const EXTRA_WORD_SET = new Set(EXTRA_WORDS.map(word => normalizeForCompare(getPreferredWord(word))));
+
+    const SCOREBOARD_GROUPS = [
+      { key: 'grade3', label: '3rd Grade', words: GRADE_WORD_SETS.grade3 },
+      { key: 'grade4', label: '4th Grade', words: GRADE_WORD_SETS.grade4 },
+      { key: 'grade5', label: '5th Grade', words: GRADE_WORD_SETS.grade5 },
+      { key: 'extra', label: 'Extra', words: EXTRA_WORD_SET },
+      { key: 'one', label: 'One Bee', words: BEE_WORD_SETS.one },
+      { key: 'two', label: 'Two Bee', words: BEE_WORD_SETS.two },
+      { key: 'three', label: 'Three Bee', words: BEE_WORD_SETS.three }
+    ];
+
+    function getWordCategoryInfo(word) {
+      const resolved = resolveKnownWord(word) || getPreferredWord(word) || word;
+      const normalized = normalizeForCompare(resolved);
+
+      let gradeLabel = 'Extra';
+      if (GRADE_WORD_SETS.grade3.has(normalized)) {
+        gradeLabel = '3rd Grade';
+      } else if (GRADE_WORD_SETS.grade4.has(normalized)) {
+        gradeLabel = '4th Grade';
+      } else if (GRADE_WORD_SETS.grade5.has(normalized)) {
+        gradeLabel = '5th Grade';
+      }
+
+      let beeLabel = 'Three Bee';
+      if (BEE_WORD_SETS.one.has(normalized)) {
+        beeLabel = 'One Bee';
+      } else if (BEE_WORD_SETS.two.has(normalized)) {
+        beeLabel = 'Two Bee';
+      }
+
+      return { gradeLabel, beeLabel };
+    }
+
+    function getScopeWordList(scopeKey) {
+      if (scopeKey === 'grade3') return GRADE_WORDS.grade3;
+      if (scopeKey === 'grade4') return GRADE_WORDS.grade4;
+      if (scopeKey === 'grade5') return GRADE_WORDS.grade5;
+      if (scopeKey === 'extra') return EXTRA_WORDS;
+      if (scopeKey === 'one') return WORDS.one;
+      if (scopeKey === 'two') return WORDS.two;
+      if (scopeKey === 'three') return WORDS.three;
+      return [...WORDS.one, ...WORDS.two, ...WORDS.three];
     }
 
     function getPoolWordsForScope(scopeKey, options = {}) {
@@ -724,21 +1054,8 @@
         return Array.from(new Set(reviewWrongWords.map(getPreferredWord)));
       }
 
-      let pool = [];
-      if (scopeKey === 'one' || currentLevel === 'one' && scopeKey === 'all') pool = WORDS.one;
-      else if (scopeKey === 'two' || currentLevel === 'two' && scopeKey === 'all') pool = WORDS.two;
-      else if (scopeKey === 'three' || currentLevel === 'three' && scopeKey === 'all') pool = WORDS.three;
-      else if (scopeKey === 'one') pool = WORDS.one;
-      else if (scopeKey === 'two') pool = WORDS.two;
-      else if (scopeKey === 'three') pool = WORDS.three;
-      else {
-        if (currentLevel === 'one') pool = WORDS.one;
-        else if (currentLevel === 'two') pool = WORDS.two;
-        else if (currentLevel === 'three') pool = WORDS.three;
-        else pool = [...WORDS.one, ...WORDS.two, ...WORDS.three];
-      }
-
-      return Array.from(new Set(pool.map(getPreferredWord)));
+      const effectiveScope = scopeKey === 'all' ? currentLevel : scopeKey;
+      return Array.from(new Set(getScopeWordList(effectiveScope).map(getPreferredWord)));
     }
 
     function getWordPool() {
@@ -746,11 +1063,7 @@
         return Array.from(new Set(state.reviewWrongWords.map(getPreferredWord)));
       }
 
-      if (state.currentLevel === 'one') return Array.from(new Set(WORDS.one.map(getPreferredWord)));
-      if (state.currentLevel === 'two') return Array.from(new Set(WORDS.two.map(getPreferredWord)));
-      if (state.currentLevel === 'three') return Array.from(new Set(WORDS.three.map(getPreferredWord)));
-
-      return Array.from(new Set([...WORDS.one, ...WORDS.two, ...WORDS.three].map(getPreferredWord)));
+      return Array.from(new Set(getScopeWordList(state.currentLevel).map(getPreferredWord)));
     }
 
     function getCurrentPoolSize() {
@@ -800,16 +1113,18 @@
       const prefix = questionNumber ? `Question ${questionNumber}. ` : '';
       const text = `${prefix}Your word is ${spokenWord}. Please spell the word.`;
 
-      // TTS 재생 전 마이크 일시정지
       state.isSpeakingTTS = true;
-      pauseMic();
+      setMicStatus(state.micEnabled ? '(Mic paused while reading)' : '', 'var(--muted)');
 
       return speakWithOptions(text, {
           rate: 0.9,
           cancelPrevious,
           onend: () => {
               state.isSpeakingTTS = false;
-              resumeMic(); // TTS 종료 후 마이크가 켜져 있어야 한다면 재개
+              if (state.micEnabled) {
+                setMicStatus('(Mic on)', 'var(--muted)');
+              }
+              resumeMic(true);
           }
       });
     }
@@ -1042,7 +1357,7 @@
     }
 
     function normalizeScopeKey(value, fallback = 'all') {
-      return ['all', 'one', 'two', 'three', 'review'].includes(value) ? value : fallback;
+      return ['all', 'grade3', 'grade4', 'grade5', 'extra', 'one', 'two', 'three', 'review'].includes(value) ? value : fallback;
     }
 
     function sanitizeHistoryItem(item) {
@@ -1053,15 +1368,23 @@
 
       const scopeKey = normalizeScopeKey(
         item.scopeKey,
-        item.levelLabel === 'One Bee'
-          ? 'one'
-          : item.levelLabel === 'Two Bee'
-            ? 'two'
-            : item.levelLabel === 'Three Bee'
-              ? 'three'
-              : item.levelLabel === '오답 복습' || item.levelLabel === 'Wrong Words Review'
-                ? 'review'
-                : 'all'
+        item.levelLabel === '3rd Grade'
+          ? 'grade3'
+          : item.levelLabel === '4th Grade'
+            ? 'grade4'
+            : item.levelLabel === '5th Grade'
+              ? 'grade5'
+              : item.levelLabel === 'Extra'
+                ? 'extra'
+                : item.levelLabel === 'One Bee'
+                  ? 'one'
+                  : item.levelLabel === 'Two Bee'
+                    ? 'two'
+                    : item.levelLabel === 'Three Bee'
+                      ? 'three'
+                      : item.levelLabel === '오답 복습' || item.levelLabel === 'Wrong Words Review'
+                        ? 'review'
+                        : 'all'
       );
 
       const levelLabelText = scopeKey === 'review' ? 'Wrong Words Review' : levelLabel(scopeKey);
@@ -1215,9 +1538,11 @@
         lines.push('No records yet.');
       } else {
         state.history.forEach(item => {
+          const categoryInfo = getWordCategoryInfo(item.word);
           lines.push(
             `Question ${item.questionNumber} | ${item.ok ? 'Correct' : 'Wrong'} | ${item.levelLabel}`,
             `Word: ${item.word}`,
+            `Category: ${categoryInfo.gradeLabel} | ${categoryInfo.beeLabel}`,
             `Answer: ${item.answer || '(blank)'}`,
             ''
           );
@@ -1666,12 +1991,74 @@
       el.detailBox.style.display = 'none';
     }
 
+    function getUniqueHistoryWordSets() {
+      const attemptedWords = new Set();
+      const correctWords = new Set();
+
+      state.history.forEach(item => {
+        if (!item || !item.word) return;
+        const resolved = resolveKnownWord(item.word) || getPreferredWord(item.word) || item.word;
+        const normalized = normalizeForCompare(resolved);
+        attemptedWords.add(normalized);
+        if (item.ok) {
+          correctWords.add(normalized);
+        }
+      });
+
+      return { attemptedWords, correctWords };
+    }
+
+    function renderScoreboardTooltip() {
+      if (!el.scoreboardTooltip) return;
+
+      const { attemptedWords, correctWords } = getUniqueHistoryWordSets();
+      const rows = SCOREBOARD_GROUPS.map(group => {
+        let attemptedCount = 0;
+        let correctCount = 0;
+
+        group.words.forEach(word => {
+          if (attemptedWords.has(word)) attemptedCount += 1;
+          if (correctWords.has(word)) correctCount += 1;
+        });
+
+        const totalCount = group.words.size;
+        const pct = attemptedCount === 0 ? 0 : Math.round((correctCount / attemptedCount) * 100);
+        return `
+          <div class="scoreboardTooltipRow">
+            <span>${group.label} (${totalCount} words)</span>
+            <span>${correctCount}/${attemptedCount} = ${pct}%</span>
+          </div>
+        `;
+      }).join('');
+
+      el.scoreboardTooltip.innerHTML = `
+        <div class="scoreboardTooltipTitle">Group progress</div>
+        ${rows}
+      `;
+    }
+
     function updateStats() {
       el.totalCount.textContent = state.total;
       el.correctCount.textContent = state.correct;
       el.wrongCount.textContent = state.wrong;
       const pct = state.total === 0 ? 0 : Math.round((state.correct / state.total) * 100);
       el.accuracy.textContent = `${pct}%`;
+      renderScoreboardTooltip();
+    }
+
+    function getHistoryTags(item, categoryInfo) {
+      const tags = [];
+      const pushTag = value => {
+        if (!value) return;
+        if (tags.includes(value)) return;
+        tags.push(value);
+      };
+
+      pushTag(item.levelLabel);
+      pushTag(categoryInfo.gradeLabel);
+      pushTag(categoryInfo.beeLabel);
+
+      return tags;
     }
 
     function renderHistory() {
@@ -1683,14 +2070,25 @@
       el.historyList.innerHTML = state.history
         .slice()
         .reverse()
-        .map(item => `
+        .map(item => {
+          const categoryInfo = getWordCategoryInfo(item.word);
+          const historyTags = getHistoryTags(item, categoryInfo);
+          return `
           <div class="historyItem">
-            <div><strong>${item.ok ? 'Correct' : 'Wrong'}</strong> · <span class="muted">${item.levelLabel}</span></div>
-            <div>Question ${item.questionNumber}</div>
-            <div>Word: <strong>${item.word}</strong></div>
+            <div><strong class="${item.ok ? 'historyStatusCorrect' : 'historyStatusWrong'}">${item.ok ? 'Correct' : 'Wrong'}</strong></div>
+            <div class="historyQuestionRow">
+              <div>Question ${item.questionNumber}</div>
+              <div class="historyMetaRow">
+                ${historyTags.map(tag => `<span class="historyTag">${tag}</span>`).join('')}
+              </div>
+            </div>
+            <div class="historyWordRow">
+              <div class="historyWordText">Word: <strong>${item.word}</strong></div>
+            </div>
             <div>Your input: ${item.answer || '<span class="muted">(blank)</span>'}</div>
           </div>
-        `)
+        `;
+        })
         .join('');
     }
 
@@ -1757,6 +2155,10 @@
       el.advanceBtn.style.display = showPracticeControls ? '' : 'none';
       updateReviewStatus();
       updateProgressNote();
+
+      if (!showPracticeControls) {
+        setMicStatus(state.micEnabled ? '(Mic on)' : '', 'var(--muted)');
+      }
     }
 
     function askNewWord(questionNumber = null, announceNumber = false) {
@@ -1790,7 +2192,10 @@
       renderPrompt();
       updateControls();
 
-      // 여기서 speakWordPrompt 내부에서 isSpeakingTTS 플래그를 관리하고 끝나면 마이크를 켭니다.
+      if (state.micEnabled) {
+        startRecognition(true);
+      }
+
       speakWordPrompt(state.currentWord, announceNumber ? state.currentQuestionNumber : null);
     }
 
@@ -1818,6 +2223,9 @@
       else state.wrong += 1;
 
       pauseMic(); // 제출 시 마이크 끄기
+      if (state.micEnabled) {
+        setMicStatus('(Mic on)', 'var(--muted)');
+      }
 
       state.history.push({
         questionNumber: state.currentQuestionNumber,
@@ -1849,14 +2257,27 @@
     }
 
     // 마이크 옵션 체크 변경 이벤트
-    el.micEnableCheck.addEventListener('change', (e) => {
-      state.micEnabled = e.target.checked;
-      if (state.micEnabled && state.awaitingAnswer && !state.isSpeakingTTS) {
-        try { recognition.start(); } catch(err) {}
-      } else if (!state.micEnabled) {
-        pauseMic();
-        el.micStatus.textContent = '';
+    el.micEnableCheck.addEventListener('change', async (e) => {
+      const wantsMic = e.target.checked;
+
+      if (wantsMic) {
+        const granted = await requestMicPermission();
+        if (!granted) {
+          e.target.checked = false;
+          state.micEnabled = false;
+          setMicStatus('(Mic blocked)', 'var(--bad)');
+          return;
+        }
+
+        state.micEnabled = true;
+        setMicStatus('(Mic on)', 'var(--muted)');
+        startRecognition(true);
+        return;
       }
+
+      state.micEnabled = false;
+      pauseMic();
+      setMicStatus('');
     });
 
     el.historyFileInput.addEventListener('change', async (e) => {
