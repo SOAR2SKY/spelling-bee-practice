@@ -517,7 +517,7 @@
     <section class="hero">
       <div class="heroTitle">
         <h1>Spelling Bee Practice</h1>
-        <div class="pill">Version 55</div>
+        <div class="pill">Version 56</div>
       </div>
     </section>
 
@@ -535,7 +535,6 @@
           <label for="historyFileInput">Load recent history TXT</label>
           <div class="fileRow">
             <input id="historyFileInput" type="file" accept=".txt,text/plain" />
-            <button id="clearReviewBtn" class="ghost" type="button">Clear loaded file</button>
           </div>
           <div id="reviewStatus" class="statusLine" style="display:none;"></div>
         </div>
@@ -675,7 +674,6 @@
       practiceOptions: document.getElementById('practiceOptions'),
       loadModeSelect: document.getElementById('loadModeSelect'),
       historyFileInput: document.getElementById('historyFileInput'),
-      clearReviewBtn: document.getElementById('clearReviewBtn'),
       reviewStatus: document.getElementById('reviewStatus'),
       reviewLoaderSection: document.getElementById('reviewLoaderSection'),
       progressNote: document.getElementById('progressNote'),
@@ -1068,6 +1066,10 @@
 
     function getCurrentPoolSize() {
       return getWordPool().length;
+    }
+
+    function getCurrentStudyWordSet() {
+      return new Set(getWordPool().map(word => normalizeForCompare(getPreferredWord(word))));
     }
 
     function pickRandomWord() {
@@ -1787,6 +1789,10 @@
 
       const wrongWords = snapshot ? extractWrongWordsFromSnapshot(snapshot) : parseWrongWordsFromHistoryText(text);
       applyWrongWordReview(wrongWords, fileName);
+
+      if (wrongWords.length > 0 && state.reviewMode && !state.started) {
+        askNewWord(state.total + 1, true);
+      }
     }
 
     function applySessionSnapshot(snapshot, fileName) {
@@ -1922,10 +1928,6 @@
       el.reviewStatus.textContent = message;
       el.reviewStatus.style.display = message ? 'block' : 'none';
 
-      if (el.clearReviewBtn) {
-        el.clearReviewBtn.textContent = 'Clear loaded file';
-        el.clearReviewBtn.disabled = state.started || (!loadedFileCache.text && !state.loadedSnapshotFileName && !state.reviewMode && !state.reviewStatusMessage);
-      }
     }
 
     function getProgressDisplayInfo() {
@@ -2012,16 +2014,19 @@
       if (!el.scoreboardTooltip) return;
 
       const { attemptedWords, correctWords } = getUniqueHistoryWordSets();
+      const studyWords = getCurrentStudyWordSet();
       const rows = SCOREBOARD_GROUPS.map(group => {
+        let totalCount = 0;
         let attemptedCount = 0;
         let correctCount = 0;
 
         group.words.forEach(word => {
+          if (!studyWords.has(word)) return;
+          totalCount += 1;
           if (attemptedWords.has(word)) attemptedCount += 1;
           if (correctWords.has(word)) correctCount += 1;
         });
 
-        const totalCount = group.words.size;
         const pct = attemptedCount === 0 ? 0 : Math.round((correctCount / attemptedCount) * 100);
         return `
           <div class="scoreboardTooltipRow">
@@ -2286,10 +2291,6 @@
       await loadSessionOrWrongWordsFromFile(file);
     });
 
-    el.clearReviewBtn.addEventListener('click', () => {
-      if (state.started) return;
-      clearLoadedPracticeFile();
-    });
 
     el.loadModeSelect.addEventListener('change', () => {
       if (state.started || !loadedFileCache.text) return;
@@ -2302,6 +2303,7 @@
         renderPrompt();
       }
       updateProgressNote();
+      renderScoreboardTooltip();
     });
 
     el.noRepeatCheck.addEventListener('change', () => {
