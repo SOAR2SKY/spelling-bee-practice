@@ -517,7 +517,7 @@
     <section class="hero">
       <div class="heroTitle">
         <h1>Spelling Bee Practice</h1>
-        <div class="pill">Version 56</div>
+        <div class="pill">Version 57</div>
       </div>
     </section>
 
@@ -1110,18 +1110,24 @@
       return SPEECH_HINTS[word] || word;
     }
 
+    let activePromptSpeechToken = 0;
+
     function speakWordPrompt(word, questionNumber = null, cancelPrevious = true) {
       const spokenWord = getWordToSpeak(word);
       const prefix = questionNumber ? `Question ${questionNumber}. ` : '';
       const text = `${prefix}Your word is ${spokenWord}. Please spell the word.`;
+      const promptToken = activePromptSpeechToken + 1;
+      activePromptSpeechToken = promptToken;
 
       state.isSpeakingTTS = true;
+      pauseMic();
       setMicStatus(state.micEnabled ? '(Mic paused while reading)' : '', 'var(--muted)');
 
       return speakWithOptions(text, {
           rate: 0.9,
           cancelPrevious,
           onend: () => {
+              if (promptToken !== activePromptSpeechToken) return;
               state.isSpeakingTTS = false;
               if (state.micEnabled) {
                 setMicStatus('(Mic on)', 'var(--muted)');
@@ -2196,10 +2202,6 @@
       hideResultAndDetails();
       renderPrompt();
       updateControls();
-
-      if (state.micEnabled) {
-        startRecognition(true);
-      }
 
       speakWordPrompt(state.currentWord, announceNumber ? state.currentQuestionNumber : null);
     }
