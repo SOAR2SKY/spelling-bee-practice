@@ -520,7 +520,7 @@
     <section class="hero">
       <div class="heroTitle">
         <h1>Spelling Bee Practice</h1>
-        <div class="pill">Version 62</div>
+        <div class="pill">Version 63</div>
       </div>
     </section>
 
@@ -1149,11 +1149,15 @@
       return total;
     }
 
-    function speakWordPrompt(word, questionNumber = null, cancelPrevious = true) {
+    function speakWordPrompt(word, questionNumber = null, cancelPrevious = true, isInitial = false) {
       if (cancelPrevious) cancelSpeechPlayback();
 
       // 마이크를 끄고 읽기 시작
       state.isSpeakingTTS = true;
+      if (isInitial) {
+        state.isInitialPromptSpeaking = true;
+        updateControls();
+      }
       pauseMic();
       updateMicStatus();
 
@@ -1166,6 +1170,10 @@
         cancelPrevious: false, // 위에서 이미 취소함
         onend: () => {
           state.isSpeakingTTS = false;
+          if (isInitial) {
+            state.isInitialPromptSpeaking = false;
+            updateControls();
+          }
           updateMicStatus();
           resumeMic(true);
         }
@@ -1552,6 +1560,7 @@
       state.loadedFileMode = '';
       state.usedWordsByScope = createEmptyUsedWordsByScope();
       state.isSpeakingTTS = false; // 리셋시 TTS 해제
+      state.isInitialPromptSpeaking = false;
 
       el.levelSelect.value = 'all';
       el.noRepeatCheck.checked = true;
@@ -1898,7 +1907,7 @@
       if (el.promptBox) el.promptBox.style.display = showPracticeControls ? 'block' : 'none';
       
       el.answerInput.disabled = !state.awaitingAnswer;
-      el.checkBtn.disabled = !state.awaitingAnswer;
+      el.checkBtn.disabled = !state.awaitingAnswer || state.isInitialPromptSpeaking;
       el.advanceBtn.disabled = !state.awaitingNext || state.explanationLocked;
       el.speakBtn.disabled = !state.currentWord || (state.awaitingNext && state.explanationLocked);
       el.defBtn.disabled = !state.currentWord || (state.awaitingNext && state.explanationLocked);
@@ -1942,7 +1951,7 @@
       renderPrompt();
       updateControls();
       
-      speakWordPrompt(state.currentWord, announceNumber ? state.currentQuestionNumber : null);
+      speakWordPrompt(state.currentWord, announceNumber ? state.currentQuestionNumber : null, true, true);
     }
 
     function moveToNextQuestion() {
@@ -2064,7 +2073,10 @@
       if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
       if (!state.started) return;
       if (state.awaitingAnswer) {
-        e.preventDefault(); checkAnswer(); return;
+        e.preventDefault(); 
+        if (state.isInitialPromptSpeaking) return; // 첫 문제 단어를 읽어주는 중에는 엔터 입력 방지
+        checkAnswer(); 
+        return;
       }
       if (state.awaitingNext && !state.explanationLocked) {
         e.preventDefault(); cancelSpeechPlayback(); moveToNextQuestion();
