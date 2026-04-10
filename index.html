@@ -520,7 +520,7 @@
     <section class="hero">
       <div class="heroTitle">
         <h1>Spelling Bee Practice</h1>
-        <div class="pill">Version 63</div>
+        <div class="pill">Version 65</div>
       </div>
     </section>
 
@@ -535,7 +535,6 @@
             <option value="wrongOnly">Review wrong words only</option>
           </select>
           
-          <label for="historyFileInput">Load recent history TXT</label>
           <div class="fileRow">
             <input id="historyFileInput" type="file" accept=".txt,text/plain" />
           </div>
@@ -559,6 +558,15 @@
             <input id="noRepeatCheck" type="checkbox" checked />
             <label for="noRepeatCheck">Do not repeat words</label>
           </div>
+
+          <label for="ttsModeSelect" style="margin-top: 18px;">Voice Engine</label>
+          <select id="ttsModeSelect" style="margin-bottom: 12px;">
+            <option value="google">Google Cloud TTS</option>
+            <option value="browser">Browser Default TTS</option>
+          </select>
+
+          <label for="gcpApiKeyInput">Google TTS API Key (선택 사항)</label>
+          <input id="gcpApiKeyInput" type="password" placeholder="AIzaSy..." autocomplete="off" />
         </div>
 
         <div id="progressNote" class="progressNote"></div>
@@ -687,6 +695,12 @@
       levelSelect: document.getElementById('levelSelect'),
       noRepeatWrap: document.getElementById('noRepeatWrap'),
       noRepeatCheck: document.getElementById('noRepeatCheck'),
+      ttsModeSelect: document.getElementById('ttsModeSelect'),
+      rateWord: document.getElementById('rateWord'),
+      rateSpelling: document.getElementById('rateSpelling'),
+      rateResult: document.getElementById('rateResult'),
+      rateExplain: document.getElementById('rateExplain'),
+      gcpApiKeyInput: document.getElementById('gcpApiKeyInput'),
       practiceOptions: document.getElementById('practiceOptions'),
       loadModeSelect: document.getElementById('loadModeSelect'),
       historyFileInput: document.getElementById('historyFileInput'),
@@ -716,6 +730,46 @@
       historyList: document.getElementById('historyList'),
       scoreboardTooltip: document.getElementById('scoreboardTooltip')
     };
+
+    if (el.gcpApiKeyInput) {
+      el.gcpApiKeyInput.value = localStorage.getItem('gcpApiKey') || '';
+      el.gcpApiKeyInput.addEventListener('input', (e) => {
+        localStorage.setItem('gcpApiKey', e.target.value.trim());
+      });
+    }
+
+    if (el.ttsModeSelect) {
+      el.ttsModeSelect.value = localStorage.getItem('ttsMode') || 'google';
+      el.ttsModeSelect.addEventListener('change', (e) => {
+        localStorage.setItem('ttsMode', e.target.value);
+      });
+    }
+
+    function formatRate(val) {
+      let num = parseFloat(val);
+      if (isNaN(num)) num = 1.0;
+      if (num < 0.7) num = 0.7;
+      if (num > 1.3) num = 1.3;
+      return Number.isInteger(num) ? num.toFixed(1) : num.toString();
+    }
+
+    ['rateWord', 'rateSpelling', 'rateResult', 'rateExplain'].forEach(id => {
+      if (el[id]) {
+        const saved = localStorage.getItem(id);
+        el[id].value = saved ? formatRate(saved) : '1.0';
+        el[id].addEventListener('change', (e) => {
+          const formatted = formatRate(e.target.value);
+          e.target.value = formatted;
+          localStorage.setItem(id, formatted);
+        });
+      }
+    });
+
+    function getRate(id) {
+      if (!el[id]) return 1.0;
+      let val = parseFloat(el[id].value);
+      return isNaN(val) ? 1.0 : val;
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -1062,11 +1116,17 @@
 
     // 음성 합성 고유 토큰 (Race condition 완벽 방어용)
     let activeSpeechSequenceToken = 0;
+    let activeAudio = null; // Google TTS에서 반환한 오디오 객체 추적용
 
     function cancelSpeechPlayback() {
       activeSpeechSequenceToken += 1; // 새로운 요청마다 토큰 번호 상승
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
+      }
+      if (activeAudio) {
+        activeAudio.pause();
+        activeAudio.currentTime = 0;
+        activeAudio = null;
       }
     }
 
@@ -1084,33 +1144,92 @@
       if (cancelPrevious) cancelSpeechPlayback();
       
       const currentToken = activeSpeechSequenceToken; // 현재 실행 흐름의 고유 토큰 캡처
+      const apiKey = el.gcpApiKeyInput ? el.gcpApiKeyInput.value.trim() : '';
+      const useGoogle = el.ttsModeSelect ? el.ttsModeSelect.value === 'google' : true;
 
-      if (!('speechSynthesis' in window)) {
-        if (typeof options.onend === 'function') {
-          setTimeout(() => {
-            if (currentToken === activeSpeechSequenceToken) options.onend();
-          }, estimated);
+      // 기본 내장 TTS (브라우저 의존) 재생 함수
+      function fallbackToBrowserTTS() {
+        if (!('speechSynthesis' in window)) {
+          if (typeof options.onend === 'function') {
+            setTimeout(() => {
+              if (currentToken === activeSpeechSequenceToken) options.onend();
+            }, estimated);
+          }
+          return;
         }
+
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = lang;
+        utter.rate = rate;
+        utter.pitch = 1;
+        utter.volume = 1;
+
+        if (typeof options.onend === 'function') {
+          utter.onend = () => {
+            if (currentToken === activeSpeechSequenceToken) options.onend();
+          };
+          utter.onerror = () => {
+            if (currentToken === activeSpeechSequenceToken) options.onend();
+          };
+        }
+
+        window.speechSynthesis.speak(utter);
+      }
+
+      if (useGoogle && apiKey) {
+        // 언어에 따라 가장 자연스러운 Neural2 목소리 사용
+        const voiceName = lang.startsWith('ko') ? 'ko-KR-Neural2-A' : 'en-US-Neural2-F';
+        
+        fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: { text: text },
+            voice: { languageCode: lang, name: voiceName },
+            audioConfig: { audioEncoding: 'MP3', speakingRate: rate }
+          })
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Google TTS API Error');
+          return res.json();
+        })
+        .then(data => {
+          if (currentToken !== activeSpeechSequenceToken) return;
+          if (!data.audioContent) throw new Error('No audio content returned');
+
+          const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+          activeAudio = audio;
+
+          audio.onended = () => {
+            if (currentToken === activeSpeechSequenceToken && typeof options.onend === 'function') {
+              options.onend();
+            }
+            activeAudio = null;
+          };
+          
+          audio.onerror = () => {
+            if (currentToken === activeSpeechSequenceToken && typeof options.onend === 'function') {
+              options.onend();
+            }
+            activeAudio = null;
+          };
+
+          audio.play().catch(e => {
+            if (currentToken === activeSpeechSequenceToken && typeof options.onend === 'function') {
+              options.onend();
+            }
+          });
+        })
+        .catch(err => {
+          console.warn('Google TTS Failed, falling back to browser TTS.', err);
+          fallbackToBrowserTTS();
+        });
+
         return estimated;
       }
 
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = lang;
-      utter.rate = rate;
-      utter.pitch = 1;
-      utter.volume = 1;
-
-      if (typeof options.onend === 'function') {
-        utter.onend = () => {
-          // 호출된 onend가 최신 토큰의 것인지 철저히 검사
-          if (currentToken === activeSpeechSequenceToken) options.onend();
-        };
-        utter.onerror = () => {
-          if (currentToken === activeSpeechSequenceToken) options.onend();
-        };
-      }
-
-      window.speechSynthesis.speak(utter);
+      // API Key가 없거나 에러 발생 시 브라우저 내장 TTS로 재생
+      fallbackToBrowserTTS();
       return estimated;
     }
 
@@ -1136,7 +1255,7 @@
         const item = queue[index];
         total += speakWithOptions(item.text, {
           lang: item.lang || 'en-US',
-          rate: item.rate || 0.9,
+          rate: item.rate || 1.0,
           cancelPrevious: false,
           onend: () => {
             if (sequenceToken !== activeSpeechSequenceToken) return;
@@ -1166,7 +1285,7 @@
       const text = `${prefix} ${spokenWord}.`;
 
       return speakWithOptions(text, {
-        rate: 0.9,
+        rate: getRate('rateWord'),
         cancelPrevious: false, // 위에서 이미 취소함
         onend: () => {
           state.isSpeakingTTS = false;
@@ -1192,7 +1311,7 @@
       const text = (info && info.en && info.en !== '-') ? info.en : "No definition available.";
 
       return speakWithOptions(text, {
-        rate: 0.9,
+        rate: getRate('rateExplain'),
         cancelPrevious: false,
         onend: () => {
           state.isSpeakingTTS = false;
@@ -1214,7 +1333,7 @@
       const text = (info && info.ex && info.ex !== '-') ? info.ex : "No example sentence available.";
 
       return speakWithOptions(text, {
-        rate: 0.9,
+        rate: getRate('rateExplain'),
         cancelPrevious: false,
         onend: () => {
           state.isSpeakingTTS = false;
@@ -1240,11 +1359,11 @@
       
       const info = getAnswerInfo(word);
       const items = [
-        { text: ok ? `Correct. Word: ${getWordToSpeak(info.word)}.` : `Incorrect. The correct word is ${getWordToSpeak(info.word)}.`, lang: 'en-US', rate: 0.86 },
-        { text: `Spelling: ${spellOutWord(info.word)}.`, lang: 'en-US', rate: 0.82 },
-        { text: `${info.ko}.`, lang: 'ko-KR', rate: 0.9 },
-        { text: `English definition: ${info.en}.`, lang: 'en-US', rate: 0.9 },
-        { text: `Example sentence: ${info.ex}.`, lang: 'en-US', rate: 0.9 }
+        { text: ok ? `Correct. Word: ${getWordToSpeak(info.word)}.` : `Incorrect. The correct word is ${getWordToSpeak(info.word)}.`, lang: 'en-US', rate: getRate('rateResult') },
+        { text: `Spelling: ${spellOutWord(info.word)}.`, lang: 'en-US', rate: getRate('rateSpelling') },
+        { text: `${info.ko}.`, lang: 'ko-KR', rate: getRate('rateExplain') },
+        { text: `English definition: ${info.en}.`, lang: 'en-US', rate: getRate('rateExplain') },
+        { text: `Example sentence: ${info.ex}.`, lang: 'en-US', rate: getRate('rateExplain') }
       ];
 
       state.isSpeakingTTS = true;
