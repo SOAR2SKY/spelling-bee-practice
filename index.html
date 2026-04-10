@@ -771,20 +771,6 @@
       return Number.isInteger(num) ? num.toFixed(1) : num.toString();
     }
 
-    if (el.gcpApiKeyInput) {
-      el.gcpApiKeyInput.value = localStorage.getItem('gcpApiKey') || '';
-      el.gcpApiKeyInput.addEventListener('input', (e) => {
-        localStorage.setItem('gcpApiKey', e.target.value.trim());
-      });
-    }
-
-    if (el.ttsModeSelect) {
-      el.ttsModeSelect.value = localStorage.getItem('ttsMode') || 'google';
-      el.ttsModeSelect.addEventListener('change', (e) => {
-        localStorage.setItem('ttsMode', e.target.value);
-      });
-    }
-
     function formatRate(val) {
       let num = parseFloat(val);
       if (isNaN(num)) num = 1.0;
